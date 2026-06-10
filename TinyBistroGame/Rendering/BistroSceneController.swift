@@ -1,6 +1,19 @@
 import SceneKit
 
 final class BistroSceneController {
+    private struct Constants {
+        static let entityMoveAnimationDuration = 0.22
+        static let timeoutPopScale: CGFloat = 1.2
+        static let timeoutPopDuration = 0.16
+        static let timeoutSettleScale: CGFloat = 1.0
+        static let timeoutSettleDuration = 0.12
+        static let timeoutHoldDuration = 0.45
+        static let timeoutRiseDistance: CGFloat = 1.45
+        static let timeoutRiseDuration = 1.85
+        static let timeoutFadeDelay = 1.05
+        static let timeoutFadeDuration = 0.8
+    }
+
     let scene: SCNScene
 
     private var world: BistroWorld
@@ -15,9 +28,11 @@ final class BistroSceneController {
     }
 
     func sync(to world: BistroWorld, animated: Bool = true) {
+        let previousWorld = self.world
         self.world = world
         syncFurniture(world: world)
         syncEntities(world: world, animated: animated)
+        syncTimeoutEffects(previousWorld: previousWorld, world: world)
         syncSelection(world: world)
     }
 
@@ -54,7 +69,7 @@ final class BistroSceneController {
             if let node = entityNodes[entity.id] {
                 if animated {
                     SCNTransaction.begin()
-                    SCNTransaction.animationDuration = 0.22
+                    SCNTransaction.animationDuration = Constants.entityMoveAnimationDuration
                     node.position = targetPosition
                     SCNTransaction.commit()
                 } else {
@@ -65,6 +80,59 @@ final class BistroSceneController {
                 entityNodes[entity.id] = node
                 scene.rootNode.addChildNode(node)
             }
+        }
+    }
+
+    private func syncTimeoutEffects(previousWorld: BistroWorld, world: BistroWorld) {
+        guard world.lostCustomers > previousWorld.lostCustomers,
+              let customer = timedOutCustomer(previousWorld: previousWorld, world: world),
+              let node = entityNodes[customer.id]
+        else {
+            return
+        }
+
+        let effectNode = NodeFactory.timeoutEffectNode()
+        node.addChildNode(effectNode)
+
+        let pop = SCNAction.scale(to: Constants.timeoutPopScale, duration: Constants.timeoutPopDuration)
+        pop.timingMode = .easeOut
+
+        let settle = SCNAction.scale(to: Constants.timeoutSettleScale, duration: Constants.timeoutSettleDuration)
+        settle.timingMode = .easeInEaseOut
+
+        let hold = SCNAction.wait(duration: Constants.timeoutHoldDuration)
+
+        let rise = SCNAction.moveBy(
+            x: 0,
+            y: Constants.timeoutRiseDistance,
+            z: 0,
+            duration: Constants.timeoutRiseDuration
+        )
+        rise.timingMode = .easeOut
+
+        let lateFade = SCNAction.sequence([
+            .wait(duration: Constants.timeoutFadeDelay),
+            .fadeOut(duration: Constants.timeoutFadeDuration)
+        ])
+        let fade = SCNAction.group([rise, lateFade])
+        fade.timingMode = .easeIn
+
+        effectNode.runAction(.sequence([pop, settle, hold, fade, .removeFromParentNode()]))
+    }
+
+    private func timedOutCustomer(previousWorld: BistroWorld, world: BistroWorld) -> Entity? {
+        let previousWaitingCustomerIDs = Set(
+            previousWorld.entities
+                .filter { $0.role == .customer && $0.customerState == .waitingForFood }
+                .map(\.id)
+        )
+        let activeOrderCustomerIDs = Set(world.orders.map(\.customerID))
+
+        return world.entities.first { entity in
+            entity.role == .customer &&
+            entity.customerState == .leaving &&
+            previousWaitingCustomerIDs.contains(entity.id) &&
+            !activeOrderCustomerIDs.contains(entity.id)
         }
     }
 

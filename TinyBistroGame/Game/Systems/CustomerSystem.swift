@@ -1,7 +1,14 @@
 import Foundation
 
 enum CustomerSystem {
-    static let movementStepDuration: TimeInterval = 0.35
+    private struct Constants {
+        static let movementStepDuration: TimeInterval = 0.55
+        static let seatedPauseDuration: TimeInterval = 0.75
+        static let orderingDuration: TimeInterval = 1.0
+        static let eatingDuration: TimeInterval = 2.0
+    }
+
+    static let movementStepDuration = Constants.movementStepDuration
 
     static func spawnCustomer(in world: inout BistroWorld) {
         guard world.activeCustomer == nil,
@@ -47,15 +54,18 @@ enum CustomerSystem {
         let customer = world.entities[index]
 
         switch customer.customerState {
-        case .seated where customer.stateElapsedTime >= 0.75:
+        case .seated where customer.stateElapsedTime >= Constants.seatedPauseDuration:
             world.entities[index].customerState = .ordering
             world.entities[index].stateElapsedTime = 0
             world.statusMessage = "\(customer.name) is choosing a recipe."
 
-        case .ordering where customer.stateElapsedTime >= 1.0:
+        case .ordering where customer.stateElapsedTime >= Constants.orderingDuration:
             createOrderIfNeeded(world: &world, customerIndex: index)
 
-        case .eating where customer.stateElapsedTime >= 2.0:
+        case .waitingForFood where customer.stateElapsedTime >= world.waitTimeout:
+            sendCustomerAwayHungry(world: &world, customerIndex: index)
+
+        case .eating where customer.stateElapsedTime >= Constants.eatingDuration:
             sendCustomerHome(world: &world, customerIndex: index)
 
         case .leaving where customer.destination == nil:
@@ -116,11 +126,62 @@ enum CustomerSystem {
         world.statusMessage = "\(world.entities[customerIndex].name) is leaving happy."
     }
 
+    private static func sendCustomerAwayHungry(world: inout BistroWorld, customerIndex: Int) {
+        guard let entrance = world.furniture.first(where: { $0.kind == .entrance }) else {
+            return
+        }
+
+        let customer = world.entities[customerIndex]
+        let abandonedOrderIDs = Set(world.orders.filter { $0.customerID == customer.id }.map(\.id))
+
+        world.entities[customerIndex].customerState = .leaving
+        world.entities[customerIndex].destination = entrance.position
+        world.entities[customerIndex].stateElapsedTime = 0
+        world.orders.removeAll { $0.customerID == customer.id }
+        world.lostCustomers += 1
+
+        if let chairIndex = world.furniture.firstIndex(where: { $0.occupiedBy == customer.id }) {
+            world.furniture[chairIndex].occupiedBy = nil
+        }
+
+        if let staffIndex = world.entities.firstIndex(where: { $0.role == .staff }),
+           staffStateReferencesAbandonedOrder(world.entities[staffIndex].staffState, abandonedOrderIDs: abandonedOrderIDs) {
+            world.entities[staffIndex].staffState = .idle
+        }
+
+        world.statusMessage = "\(customer.name) left unhappy."
+    }
+
     private static func finishVisit(world: inout BistroWorld, customerIndex: Int) {
         let name = world.entities[customerIndex].name
+        let customerID = world.entities[customerIndex].id
+        let completedMeal = world.orders.contains { $0.customerID == customerID && $0.status == .delivered }
+
         world.entities.remove(at: customerIndex)
-        world.orders.removeAll { $0.status == .completed || $0.status == .delivered }
+        world.orders.removeAll { $0.customerID == customerID || $0.status == .completed }
+
+        guard completedMeal else {
+            return
+        }
+
         world.servedCustomers += 1
-        world.statusMessage = "\(name) left. Served customers: \(world.servedCustomers)."
+
+        if world.servedCustomers >= world.targetServed {
+            world.sessionState = .success
+            world.statusMessage = "Goal reached! Served \(world.servedCustomers)."
+        } else {
+            world.statusMessage = "\(name) left. Served customers: \(world.servedCustomers)."
+        }
+    }
+
+    private static func staffStateReferencesAbandonedOrder(_ staffState: StaffState?, abandonedOrderIDs: Set<Order.ID>) -> Bool {
+        switch staffState {
+        case .cooking(let orderID), .carryingDish(let orderID):
+            return abandonedOrderIDs.contains(orderID)
+        case .delivering(let orderID, _):
+            return abandonedOrderIDs.contains(orderID)
+        case .idle, .moving, nil:
+            return false
+        }
     }
 }

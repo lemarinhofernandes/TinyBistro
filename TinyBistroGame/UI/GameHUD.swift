@@ -41,7 +41,7 @@ struct GameHUD: View {
             Text(world.statusMessage)
                 .font(.subheadline)
                 .lineLimit(3)
-            Text("Served: \(world.servedCustomers)")
+            Text("Served: \(world.servedCustomers)/\(world.targetServed)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

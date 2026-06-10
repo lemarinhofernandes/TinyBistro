@@ -1,6 +1,27 @@
 import SceneKit
+import UIKit
 
 enum NodeFactory {
+    private struct Constants {
+        static let timeoutEffectNodeName = "customer-timeout-effect"
+        static let timeoutEffectY: Float = 1.35
+        static let timeoutEffectInitialScale: Float = 0.2
+        static let timeoutPlaneWidth: CGFloat = 0.95
+        static let timeoutPlaneHeight: CGFloat = 0.44
+        static let timeoutImageSize = CGSize(width: 220, height: 104)
+        static let timeoutHaloRect = CGRect(x: 28, y: 10, width: 164, height: 84)
+        static let timeoutShadowBlur: CGFloat = 14
+        static let timeoutTextShadowBlur: CGFloat = 7
+        static let timeoutEmojiFrame = CGRect(x: 24, y: 16, width: 76, height: 72)
+        static let timeoutPenaltyFrame = CGRect(x: 94, y: 10, width: 102, height: 82)
+        static let timeoutEmojiFontSize: CGFloat = 58
+        static let timeoutPenaltyFontSize: CGFloat = 60
+        static let timeoutPenaltyStrokeWidth: CGFloat = -4
+        static let timeoutHaloColor = UIColor(red: 1, green: 0.08, blue: 0.02, alpha: 0.30)
+        static let timeoutShadowColor = UIColor(red: 1, green: 0, blue: 0, alpha: 0.85)
+        static let timeoutPenaltyColor = UIColor(red: 1, green: 0.02, blue: 0.02, alpha: 1)
+    }
+
     static func tileNode(position: GridPosition, isDark: Bool, world: BistroWorld) -> SCNNode {
         let geometry = SCNBox(width: 0.96, height: 0.05, length: 0.96, chamferRadius: 0.025)
         geometry.materials = [isDark ? BistroMaterials.floorDark : BistroMaterials.floorLight]
@@ -102,5 +123,84 @@ enum NodeFactory {
         node.opacity = 0.42
         node.position = SceneCoordinates.worldPosition(for: position, in: world, y: 0.09)
         return node
+    }
+
+    static func timeoutEffectNode() -> SCNNode {
+        let root = SCNNode()
+        root.name = Constants.timeoutEffectNodeName
+        root.position = SCNVector3(0, Constants.timeoutEffectY, 0)
+        root.scale = SCNVector3(
+            Constants.timeoutEffectInitialScale,
+            Constants.timeoutEffectInitialScale,
+            Constants.timeoutEffectInitialScale
+        )
+        root.constraints = [SCNBillboardConstraint()]
+
+        let geometry = SCNPlane(width: Constants.timeoutPlaneWidth, height: Constants.timeoutPlaneHeight)
+        geometry.materials = [timeoutEffectMaterial()]
+        root.geometry = geometry
+
+        return root
+    }
+
+    private static func timeoutEffectMaterial() -> SCNMaterial {
+        let material = SCNMaterial()
+        material.diffuse.contents = timeoutEffectImage()
+        material.emission.contents = timeoutEffectImage()
+        material.lightingModel = .constant
+        material.isDoubleSided = true
+        return material
+    }
+
+    private static func timeoutEffectImage() -> UIImage {
+        let size = Constants.timeoutImageSize
+        let renderer = UIGraphicsImageRenderer(size: size)
+
+        return renderer.image { context in
+            let cgContext = context.cgContext
+
+            cgContext.setShadow(
+                offset: .zero,
+                blur: Constants.timeoutShadowBlur,
+                color: Constants.timeoutShadowColor.cgColor
+            )
+
+            let haloPath = UIBezierPath(ovalIn: Constants.timeoutHaloRect)
+            Constants.timeoutHaloColor.setFill()
+            haloPath.fill()
+
+            cgContext.setShadow(
+                offset: .zero,
+                blur: Constants.timeoutTextShadowBlur,
+                color: UIColor.black.withAlphaComponent(0.75).cgColor
+            )
+
+            let emojiAttributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: Constants.timeoutEmojiFontSize),
+                .paragraphStyle: centeredParagraphStyle
+            ]
+            ("😡" as NSString).draw(
+                in: Constants.timeoutEmojiFrame,
+                withAttributes: emojiAttributes
+            )
+
+            let penaltyAttributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: Constants.timeoutPenaltyFontSize, weight: .black),
+                .foregroundColor: Constants.timeoutPenaltyColor,
+                .strokeColor: UIColor.white,
+                .strokeWidth: Constants.timeoutPenaltyStrokeWidth,
+                .paragraphStyle: centeredParagraphStyle
+            ]
+            ("--" as NSString).draw(
+                in: Constants.timeoutPenaltyFrame,
+                withAttributes: penaltyAttributes
+            )
+        }
+    }
+
+    private static var centeredParagraphStyle: NSParagraphStyle {
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        return paragraph
     }
 }

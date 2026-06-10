@@ -1,5 +1,10 @@
 import Foundation
 
+enum SessionState: Sendable {
+    case inProgress
+    case success
+}
+
 struct BistroWorld: Sendable {
     var gridSize: GridSize
     var entities: [Entity]
@@ -8,6 +13,10 @@ struct BistroWorld: Sendable {
     var selectedTarget: SceneTapTarget?
     var statusMessage: String
     var servedCustomers: Int
+    var lostCustomers: Int
+    var targetServed: Int
+    var waitTimeout: TimeInterval
+    var sessionState: SessionState
     var nextCustomerNumber: Int
 
     var staff: Entity? {
@@ -43,6 +52,10 @@ struct BistroWorld: Sendable {
             selectedTarget: nil,
             statusMessage: "Tap the stove when the first order appears.",
             servedCustomers: 0,
+            lostCustomers: 0,
+            targetServed: 5,
+            waitTimeout: 12,
+            sessionState: .inProgress,
             nextCustomerNumber: 1
         )
     }
