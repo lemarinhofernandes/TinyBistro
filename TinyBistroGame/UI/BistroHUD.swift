@@ -9,9 +9,13 @@ enum BistroHUDAction: String {
 
 struct BistroHUD: View {
     let world: BistroWorld
+    let selectedBlueprint: FurnitureBlueprint?
     var onStartCooking: () -> Void
     var onDeliver: () -> Void
+    var onOpenShop: () -> Void
+    var onSelectBlueprint: (FurnitureBlueprint?) -> Void
     var onAction: (BistroHUDAction) -> Void
+    @State private var showsUtilityButtons = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -21,69 +25,94 @@ struct BistroHUD: View {
 
             bottomBar
         }
-        .padding(.horizontal, BistroCampTheme.Spacing.large)
-        .padding(.vertical, BistroCampTheme.Spacing.medium)
+        .padding(.horizontal, BistroCampTheme.Spacing.xSmall)
+        .padding(.vertical, BistroCampTheme.Spacing.small)
         .animation(.easeInOut(duration: 0.22), value: world.lastEventID)
         .animation(.spring(response: 0.28, dampingFraction: 0.74), value: world.activeOrder?.status.rawValue ?? "none")
     }
 
+    @ViewBuilder
     private var topBar: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(alignment: .top, spacing: BistroCampTheme.Spacing.medium) {
-                CampTicketView(order: world.activeOrder)
-                    .layoutPriority(1)
-
-                Spacer(minLength: BistroCampTheme.Spacing.medium)
-
-                CampScoreView(
-                    served: world.servedCustomers,
-                    target: world.targetServed,
-                    lost: world.lostCustomers
-                )
-            }
-
-            VStack(alignment: .trailing, spacing: BistroCampTheme.Spacing.small) {
-                CampTicketView(order: world.activeOrder)
-                CampScoreView(
-                    served: world.servedCustomers,
-                    target: world.targetServed,
-                    lost: world.lostCustomers
-                )
-            }
+        if world.sessionState == .closed {
+            closedTopBar
+        } else {
+            activeTopBar
         }
     }
 
-    private var bottomBar: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(alignment: .bottom, spacing: BistroCampTheme.Spacing.medium) {
-                CampStatusBubble(text: world.statusMessage, eventID: world.lastEventID)
-                    .frame(maxWidth: 460)
+    private var closedTopBar: some View {
+        HStack(alignment: .top, spacing: BistroCampTheme.Spacing.medium) {
+            CampPanel(tint: BistroCampTheme.Colors.varnishOrange) {
+                HStack(spacing: BistroCampTheme.Spacing.medium) {
+                    CampOutlinedText(
+                        text: "Tiny Bistro",
+                        font: BistroCampTheme.Fonts.camp(23),
+                        fill: BistroCampTheme.Colors.cream,
+                        outline: BistroCampTheme.Colors.tomato.opacity(0.82),
+                        outlineWidth: 1.2
+                    )
 
-                Spacer(minLength: BistroCampTheme.Spacing.small)
+                    Text("Closed")
+                        .font(BistroCampTheme.Fonts.rounded(13, weight: .heavy))
+                        .foregroundStyle(BistroCampTheme.Colors.graphite)
 
-                actionDock
+                    Spacer(minLength: BistroCampTheme.Spacing.small)
+
+                    BistroCampButton(title: "Open", systemImage: "storefront.fill", variant: .secondary, action: onOpenShop)
+                }
             }
+            .frame(maxWidth: 520)
 
-            VStack(alignment: .leading, spacing: BistroCampTheme.Spacing.small) {
-                CampStatusBubble(text: world.statusMessage, eventID: world.lastEventID)
-                actionDock
-            }
+            Spacer(minLength: 0)
         }
+    }
+
+    private var activeTopBar: some View {
+        HStack(alignment: .top, spacing: 0) {
+            CampTicketView(
+                order: world.activeOrder,
+                served: world.servedCustomers,
+                target: world.targetServed,
+                lost: world.lostCustomers
+            )
+            .layoutPriority(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .top)
+    }
+
+    private var bottomBar: some View {
+        VStack(alignment: .leading, spacing: BistroCampTheme.Spacing.small) {
+            CampStatusBubble(text: world.statusMessage, eventID: world.lastEventID)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            actionDock
+                .frame(maxWidth: .infinity, alignment: .bottom)
+        }
+        .frame(maxWidth: .infinity, alignment: .bottom)
     }
 
     private var actionDock: some View {
         CampPanel(tint: BistroCampTheme.Colors.graphite.opacity(0.92), cornerRadius: BistroCampTheme.Radius.large) {
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: BistroCampTheme.Spacing.small) {
-                    contextualButtons
-                    featureButtons
+            VStack(alignment: .leading, spacing: BistroCampTheme.Spacing.small) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: BistroCampTheme.Spacing.small) {
+                        contextualButtons
+                        utilityToggleButtons
+                    }
+                    .padding(.horizontal, 2)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-                VStack(alignment: .trailing, spacing: BistroCampTheme.Spacing.small) {
-                    contextualButtons
-                    featureButtons
+                if showsUtilityButtons {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        featureButtons
+                            .padding(.horizontal, 2)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
+            .animation(.spring(response: 0.28, dampingFraction: 0.78), value: showsUtilityButtons)
         }
     }
 
@@ -108,7 +137,31 @@ struct BistroHUD: View {
     }
 
     private var featureButtons: some View {
-        HStack(spacing: BistroCampTheme.Spacing.small) {
+        VStack(alignment: .trailing, spacing: BistroCampTheme.Spacing.small) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: BistroCampTheme.Spacing.small) {
+                    managementButtons
+                }
+
+                VStack(alignment: .trailing, spacing: BistroCampTheme.Spacing.small) {
+                    managementButtons
+                }
+            }
+
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: BistroCampTheme.Spacing.small) {
+                    catalogButtons
+                }
+
+                VStack(alignment: .trailing, spacing: BistroCampTheme.Spacing.small) {
+                    catalogButtons
+                }
+            }
+        }
+    }
+
+    private var managementButtons: some View {
+        Group {
             BistroCampButton(title: "Buy", systemImage: "cart.fill", variant: .primary) {
                 onAction(.buy)
             }
@@ -123,6 +176,49 @@ struct BistroHUD: View {
             }
         }
     }
+
+    private var catalogButtons: some View {
+        ForEach(world.catalog) { blueprint in
+            catalogButton(for: blueprint)
+        }
+    }
+
+    private var utilityToggleButtons: some View {
+        HStack(spacing: BistroCampTheme.Spacing.small) {
+            BistroCampButton(
+                title: showsUtilityButtons ? "Back" : "More",
+                systemImage: showsUtilityButtons ? "arrow.uturn.left" : "square.grid.2x2.fill",
+                variant: .neutral
+            ) {
+                showsUtilityButtons.toggle()
+            }
+        }
+    }
+
+    private func catalogButton(for blueprint: FurnitureBlueprint) -> some View {
+        BistroCampButton(
+            title: blueprint.displayName,
+            systemImage: iconName(for: blueprint),
+            variant: selectedBlueprint == blueprint ? .secondary : .primary
+        ) {
+            onSelectBlueprint(selectedBlueprint == blueprint ? nil : blueprint)
+        }
+    }
+
+    private func iconName(for blueprint: FurnitureBlueprint) -> String {
+        switch blueprint {
+        case .table:
+            return "table.furniture.fill"
+        case .chair:
+            return "chair.fill"
+        case .stove:
+            return "flame.fill"
+        case .counter:
+            return "cabinet.fill"
+        case .entrance:
+            return "door.left.hand.open"
+        }
+    }
 }
 
 private struct CampPanel<Content: View>: View {
@@ -132,7 +228,7 @@ private struct CampPanel<Content: View>: View {
 
     var body: some View {
         content
-            .padding(BistroCampTheme.Spacing.medium)
+            .padding(BistroCampTheme.Spacing.small)
             .background(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .fill(BistroCampTheme.plasticGradient(tint))
@@ -158,17 +254,20 @@ private struct CampPanel<Content: View>: View {
 
 private struct CampTicketView: View {
     let order: Order?
+    let served: Int
+    let target: Int
+    let lost: Int
 
     var body: some View {
         CampPanel(tint: BistroCampTheme.Colors.varnishOrange) {
-            VStack(alignment: .leading, spacing: BistroCampTheme.Spacing.medium) {
-                HStack(spacing: BistroCampTheme.Spacing.medium) {
+            VStack(alignment: .leading, spacing: BistroCampTheme.Spacing.small) {
+                HStack(spacing: BistroCampTheme.Spacing.small) {
                     recipeIcon
 
                     VStack(alignment: .leading, spacing: BistroCampTheme.Spacing.xSmall) {
                         CampOutlinedText(
                             text: order?.recipe.name ?? "No ticket yet",
-                            font: BistroCampTheme.Fonts.camp(21),
+                            font: BistroCampTheme.Fonts.camp(18),
                             fill: BistroCampTheme.Colors.cream,
                             outline: BistroCampTheme.Colors.tomato.opacity(0.78),
                             outlineWidth: 1.1
@@ -182,7 +281,10 @@ private struct CampTicketView: View {
 
                     Spacer(minLength: BistroCampTheme.Spacing.small)
 
-                    CampStatusBadge(text: statusText, color: statusColor, icon: statusIcon)
+                    VStack(alignment: .trailing, spacing: BistroCampTheme.Spacing.xSmall) {
+                        CampStatusBadge(text: statusText, color: statusColor, icon: statusIcon)
+                        CampScorePill(served: served, target: target, lost: lost)
+                    }
                 }
 
                 Bistro3DProgressBar(
@@ -193,7 +295,7 @@ private struct CampTicketView: View {
                 )
             }
         }
-        .frame(maxWidth: 470)
+        .frame(maxWidth: 520)
     }
 
     private var recipeIcon: some View {
@@ -206,11 +308,11 @@ private struct CampTicketView: View {
                 .stroke(BistroCampTheme.Colors.darkStroke, lineWidth: 1)
                 .padding(3)
             Image(systemName: order == nil ? "takeoutbag.and.cup.and.straw.fill" : "fork.knife.circle.fill")
-                .font(.system(size: 28, weight: .black))
+                .font(.system(size: 22, weight: .black))
                 .foregroundStyle(BistroCampTheme.Colors.tomato)
                 .shadow(color: .white.opacity(0.9), radius: 0, x: 0, y: 1)
         }
-        .frame(width: 58, height: 58)
+        .frame(width: 46, height: 46)
         .shadow(color: .black.opacity(0.38), radius: 7, x: 0, y: 5)
     }
 
@@ -306,7 +408,7 @@ private struct CampStatusBadge: View {
         Label {
             CampOutlinedText(
                 text: text,
-                font: BistroCampTheme.Fonts.camp(12),
+                font: BistroCampTheme.Fonts.camp(11),
                 fill: BistroCampTheme.Colors.cream,
                 outline: .black.opacity(0.62),
                 outlineWidth: 0.8
@@ -316,11 +418,43 @@ private struct CampStatusBadge: View {
                 .font(.system(size: 13, weight: .black))
         }
         .foregroundStyle(BistroCampTheme.Colors.cream)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
         .background(Capsule(style: .continuous).fill(BistroCampTheme.plasticGradient(color)))
         .overlay(Capsule(style: .continuous).stroke(BistroCampTheme.Colors.whiteStroke, lineWidth: 2))
         .shadow(color: .black.opacity(0.35), radius: 8, x: 0, y: 4)
+    }
+}
+
+private struct CampScorePill: View {
+    let served: Int
+    let target: Int
+    let lost: Int
+
+    var body: some View {
+        HStack(spacing: BistroCampTheme.Spacing.xSmall) {
+            Image(systemName: "star.fill")
+                .font(.system(size: 11, weight: .black))
+
+            Text("\(served)/\(target)")
+                .font(BistroCampTheme.Fonts.score(13))
+                .monospacedDigit()
+
+            if lost > 0 {
+                Text("Lost \(lost)")
+                    .font(BistroCampTheme.Fonts.score(10))
+                    .monospacedDigit()
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 3)
+                    .background(Capsule(style: .continuous).fill(BistroCampTheme.Colors.tomato.opacity(0.9)))
+            }
+        }
+        .foregroundStyle(BistroCampTheme.Colors.cream)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 5)
+        .background(Capsule(style: .continuous).fill(BistroCampTheme.plasticGradient(BistroCampTheme.Colors.cobalt)))
+        .overlay(Capsule(style: .continuous).stroke(BistroCampTheme.Colors.whiteStroke, lineWidth: 1.5))
+        .shadow(color: .black.opacity(0.28), radius: 6, x: 0, y: 3)
     }
 }
 
@@ -334,7 +468,7 @@ private struct CampScoreView: View {
             VStack(alignment: .leading, spacing: BistroCampTheme.Spacing.small) {
                 CampOutlinedText(
                     text: "Score",
-                    font: BistroCampTheme.Fonts.camp(16),
+                    font: BistroCampTheme.Fonts.camp(13),
                     fill: BistroCampTheme.Colors.cream,
                     outline: .black.opacity(0.65),
                     outlineWidth: 1
@@ -342,9 +476,9 @@ private struct CampScoreView: View {
 
                 HStack(alignment: .firstTextBaseline, spacing: 3) {
                     Text("\(served)")
-                        .font(BistroCampTheme.Fonts.score(34))
+                        .font(BistroCampTheme.Fonts.score(27))
                     Text("/\(target)")
-                        .font(BistroCampTheme.Fonts.score(18))
+                        .font(BistroCampTheme.Fonts.score(15))
                 }
                 .foregroundStyle(BistroCampTheme.Colors.cream)
                 .monospacedDigit()
@@ -359,7 +493,7 @@ private struct CampScoreView: View {
                 }
             }
         }
-        .frame(width: 150, alignment: .leading)
+        .frame(width: 120, alignment: .leading)
     }
 }
 
@@ -371,11 +505,11 @@ private struct CampStatusBubble: View {
         CampPanel(tint: BistroCampTheme.Colors.cream, cornerRadius: BistroCampTheme.Radius.large) {
             HStack(spacing: BistroCampTheme.Spacing.medium) {
                 Image(systemName: "megaphone.fill")
-                    .font(.system(size: 21, weight: .black))
+                    .font(.system(size: 17, weight: .black))
                     .foregroundStyle(BistroCampTheme.Colors.tomato)
 
                 Text(text)
-                    .font(BistroCampTheme.Fonts.rounded(15, weight: .heavy))
+                    .font(BistroCampTheme.Fonts.rounded(13, weight: .heavy))
                     .foregroundStyle(BistroCampTheme.Colors.graphite)
                     .lineLimit(2)
                     .minimumScaleFactor(0.82)

@@ -11,7 +11,8 @@ enum CustomerSystem {
     static let movementStepDuration = Constants.movementStepDuration
 
     static func spawnCustomer(in world: inout BistroWorld) {
-        guard world.activeCustomer == nil,
+        guard world.sessionState == .inProgress,
+              world.activeCustomer == nil,
               let entrance = world.furniture.first(where: { $0.kind == .entrance }),
               let chair = world.furniture.first(where: { $0.kind == .chair && $0.occupiedBy == nil })
         else {
@@ -33,7 +34,9 @@ enum CustomerSystem {
 
     static func tick(world: inout BistroWorld, deltaTime: TimeInterval) {
         guard let index = world.entities.firstIndex(where: { $0.role == .customer }) else {
-            spawnCustomer(in: &world)
+            if world.sessionState == .inProgress {
+                spawnCustomer(in: &world)
+            }
             return
         }
 
@@ -42,7 +45,9 @@ enum CustomerSystem {
         if world.entities[index].stateElapsedTime >= movementStepDuration,
            world.entities[index].destination != nil {
             world.entities[index].stateElapsedTime = 0
-            let arrived = MovementSystem.advance(entity: &world.entities[index])
+            var movingCustomer = world.entities[index]
+            let arrived = MovementSystem.advance(entity: &movingCustomer, world: world)
+            world.entities[index] = movingCustomer
 
             if arrived {
                 handleArrival(world: &world, customerIndex: index)

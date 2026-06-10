@@ -15,6 +15,15 @@ struct GridPosition: Hashable, Sendable {
 
         return self
     }
+
+    func neighbors() -> [GridPosition] {
+        [
+            GridPosition(column: column + 1, row: row),
+            GridPosition(column: column - 1, row: row),
+            GridPosition(column: column, row: row + 1),
+            GridPosition(column: column, row: row - 1)
+        ]
+    }
 }
 
 struct GridSize: Hashable, Sendable {

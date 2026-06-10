@@ -3,6 +3,10 @@ import SceneKit
 final class BistroSceneController {
     private struct Constants {
         static let entityMoveAnimationDuration = 0.22
+        static let cameraPanSensitivity: CGFloat = 1.15
+        static let cameraPanMargin: CGFloat = 5
+        static let minOrthographicScale: Double = 5.6
+        static let maxOrthographicScale: Double = 12.5
         static let timeoutPopScale: CGFloat = 1.2
         static let timeoutPopDuration = 0.16
         static let timeoutSettleScale: CGFloat = 1.0
@@ -17,6 +21,7 @@ final class BistroSceneController {
     let scene: SCNScene
 
     private var world: BistroWorld
+    private let cameraNode: SCNNode
     private var furnitureNodes: [Furniture.ID: SCNNode] = [:]
     private var entityNodes: [Entity.ID: SCNNode] = [:]
     private var selectionNode: SCNNode?
@@ -25,6 +30,7 @@ final class BistroSceneController {
     init(world: BistroWorld) {
         self.world = world
         self.scene = SceneBuilder.buildBaseScene(world: world)
+        self.cameraNode = scene.rootNode.childNode(withName: "camera", recursively: false) ?? SCNNode()
         self.effectsController = BistroEffectsController(scene: scene)
         sync(to: world, animated: false)
     }
@@ -37,6 +43,50 @@ final class BistroSceneController {
         syncTimeoutEffects(previousWorld: previousWorld, world: world)
         effectsController.sync(world: world, furnitureNodes: furnitureNodes, entityNodes: entityNodes)
         syncSelection(world: world)
+    }
+
+    func panCamera(by translation: CGPoint, in viewSize: CGSize) {
+        guard viewSize.width > 0, viewSize.height > 0 else {
+            return
+        }
+
+        let cameraScale = CGFloat(cameraNode.camera?.orthographicScale ?? 9.2)
+        let pointsToWorld = cameraScale / max(viewSize.width, viewSize.height) * Constants.cameraPanSensitivity
+        let horizontal = translation.x * pointsToWorld
+        let vertical = translation.y * pointsToWorld
+
+        let right = CGPoint(x: 1, y: -1)
+        let up = CGPoint(x: 1, y: 1)
+
+        let nextX = CGFloat(cameraNode.position.x) - horizontal * right.x - vertical * up.x
+        let nextZ = CGFloat(cameraNode.position.z) - horizontal * right.y - vertical * up.y
+        let clamped = clampedCameraPosition(x: nextX, z: nextZ)
+        cameraNode.position.x = Float(clamped.x)
+        cameraNode.position.z = Float(clamped.y)
+    }
+
+    func zoomCamera(by scale: CGFloat) {
+        guard let camera = cameraNode.camera,
+              scale > 0
+        else {
+            return
+        }
+
+        let nextScale = camera.orthographicScale / Double(scale)
+        camera.orthographicScale = min(
+            max(nextScale, Constants.minOrthographicScale),
+            Constants.maxOrthographicScale
+        )
+    }
+
+    private func clampedCameraPosition(x: CGFloat, z: CGFloat) -> CGPoint {
+        let halfWidth = CGFloat(world.gridSize.columns) / 2
+        let halfDepth = CGFloat(world.gridSize.rows) / 2
+
+        return CGPoint(
+            x: min(max(x, -halfWidth - Constants.cameraPanMargin), halfWidth + Constants.cameraPanMargin),
+            y: min(max(z, -halfDepth - Constants.cameraPanMargin), halfDepth + Constants.cameraPanMargin)
+        )
     }
 
     private func syncFurniture(world: BistroWorld) {

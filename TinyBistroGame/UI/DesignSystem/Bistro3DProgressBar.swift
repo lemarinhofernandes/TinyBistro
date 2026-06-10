@@ -56,7 +56,7 @@ struct Bistro3DProgressBar: View {
                 if let label {
                     CampOutlinedText(
                         text: label,
-                        font: BistroCampTheme.Fonts.score(13),
+                        font: BistroCampTheme.Fonts.score(12),
                         fill: BistroCampTheme.Colors.cream,
                         outline: .black.opacity(0.72),
                         outlineWidth: 0.8
@@ -77,7 +77,7 @@ struct Bistro3DProgressBar: View {
             .shadow(color: BistroCampTheme.Colors.deepShadow, radius: 10, x: 0, y: 5)
             .animation(.easeInOut(duration: 0.22), value: clampedValue)
         }
-        .frame(height: 28)
+        .frame(height: 22)
     }
 
     private var innerCavity: some View {

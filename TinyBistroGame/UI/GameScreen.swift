@@ -13,8 +13,11 @@ struct GameScreen: View {
 
                 GameHUD(
                     world: game.world,
+                    selectedBlueprint: game.placementBlueprint,
                     onStartCooking: game.startCooking,
                     onDeliver: game.deliverOrder,
+                    onOpenShop: game.openShop,
+                    onSelectBlueprint: game.selectBlueprint,
                     onAction: { action in
                         game.showComingSoon(action.rawValue)
                     }

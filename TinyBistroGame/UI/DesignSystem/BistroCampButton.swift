@@ -31,20 +31,20 @@ struct BistroCampButton: View {
         Button(action: action) {
             VStack(spacing: 3) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 21, weight: .black))
+                    .font(.system(size: 18, weight: .black))
                     .symbolRenderingMode(.hierarchical)
                     .shadow(color: .white.opacity(0.9), radius: 0, x: 0, y: 1)
 
                 CampOutlinedText(
                     text: title,
-                    font: BistroCampTheme.Fonts.camp(12),
+                    font: BistroCampTheme.Fonts.camp(11),
                     fill: BistroCampTheme.Colors.cream,
                     outline: .black.opacity(0.62),
                     outlineWidth: 0.8
                 )
             }
-            .frame(minWidth: 82, minHeight: 58)
-            .padding(.horizontal, 6)
+            .frame(minWidth: 70, minHeight: 50)
+            .padding(.horizontal, 5)
         }
         .buttonStyle(CampButtonStyle(color: variant.color, isEnabled: isEnabled))
         .disabled(!isEnabled)

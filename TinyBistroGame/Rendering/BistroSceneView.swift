@@ -21,6 +21,13 @@ struct BistroSceneView: UIViewRepresentable {
 
         let tapGesture = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap(_:)))
         view.addGestureRecognizer(tapGesture)
+
+        let panGesture = UIPanGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handlePan(_:)))
+        panGesture.maximumNumberOfTouches = 1
+        view.addGestureRecognizer(panGesture)
+
+        let pinchGesture = UIPinchGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handlePinch(_:)))
+        view.addGestureRecognizer(pinchGesture)
         return view
     }
 
@@ -53,6 +60,21 @@ struct BistroSceneView: UIViewRepresentable {
             }
 
             onTapTarget(target)
+        }
+
+        @objc func handlePan(_ recognizer: UIPanGestureRecognizer) {
+            guard let view = recognizer.view else {
+                return
+            }
+
+            let translation = recognizer.translation(in: view)
+            controller.panCamera(by: translation, in: view.bounds.size)
+            recognizer.setTranslation(.zero, in: view)
+        }
+
+        @objc func handlePinch(_ recognizer: UIPinchGestureRecognizer) {
+            controller.zoomCamera(by: recognizer.scale)
+            recognizer.scale = 1
         }
     }
 }

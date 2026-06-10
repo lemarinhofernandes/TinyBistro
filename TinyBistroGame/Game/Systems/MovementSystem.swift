@@ -1,7 +1,7 @@
 import Foundation
 
 enum MovementSystem {
-    static func advance(entity: inout Entity) -> Bool {
+    static func advance(entity: inout Entity, world: BistroWorld) -> Bool {
         guard let destination = entity.destination else {
             return false
         }
@@ -11,7 +11,14 @@ enum MovementSystem {
             return true
         }
 
-        entity.position = entity.position.movedToward(destination)
+        let nextPosition = entity.position.movedToward(destination)
+        let allowsChair = entity.role == .customer && nextPosition == destination
+        guard world.isWalkable(nextPosition, ignoring: entity.id, allowsChair: allowsChair) else {
+            entity.destination = nil
+            return false
+        }
+
+        entity.position = nextPosition
 
         if entity.position == destination {
             entity.destination = nil
