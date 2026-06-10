@@ -17,14 +17,7 @@ final class BistroGame: ObservableObject {
     }
 
     func tick(now: Date = Date()) {
-        let deltaTime: TimeInterval
-
-        if let lastTickDate {
-            deltaTime = min(0.25, now.timeIntervalSince(lastTickDate))
-        } else {
-            deltaTime = 0
-        }
-
+        let deltaTime = TimeUtils.clampedDeltaTime(since: lastTickDate, now: now)
         lastTickDate = now
         tick(deltaTime: deltaTime)
     }
@@ -53,25 +46,31 @@ final class BistroGame: ObservableObject {
 
         switch target {
         case .furniture(let id):
-            guard let furniture = world.furniture.first(where: { $0.id == id }) else {
+            guard let furniture = world.furniture(id: id) else {
                 return
             }
 
             if furniture.kind == .stove || furniture.kind == .counter {
                 CookingSystem.startCooking(world: &world)
             } else {
-                world.postEvent("Selected \(furniture.kind.rawValue).")
+                world.postEvent(L10n.format(L10n.Event.selectedFurniture, furniture.kind.displayName))
             }
 
         case .entity(let id):
-            guard let entity = world.entities.first(where: { $0.id == id }) else {
+            guard let entity = world.entity(id: id) else {
                 return
             }
 
             if entity.role == .customer {
                 CookingSystem.deliverReadyOrder(world: &world, customerID: id)
             } else {
-                world.postEvent("\(entity.name) is \(entity.staffState?.displayName.lowercased() ?? "ready").")
+                world.postEvent(
+                    L10n.format(
+                        L10n.Event.staffState,
+                        entity.name,
+                        entity.staffState?.displayName.lowercased() ?? L10n.string(L10n.HUD.ready).lowercased()
+                    )
+                )
             }
 
         case .tile(let position):
@@ -100,48 +99,48 @@ final class BistroGame: ObservableObject {
         world.servedCustomers = 0
         world.lostCustomers = 0
         world.orders.removeAll()
-        world.postEvent("Shop open! First guest is on the way.")
+        world.postEvent(L10n.string(L10n.Event.shopOpened))
         CustomerSystem.spawnCustomer(in: &world)
     }
 
     func showComingSoon(_ feature: String) {
-        world.postEvent("\(feature): em breve.")
+        world.postEvent(L10n.format(L10n.Event.comingSoon, feature))
     }
 
     func selectBlueprint(_ blueprint: FurnitureBlueprint?) {
         selectedBlueprint = blueprint
 
         if let blueprint {
-            world.postEvent("Tap an empty tile to place \(blueprint.displayName).")
+            world.postEvent(L10n.format(L10n.Event.placementPrompt, blueprint.displayName))
         } else {
-            world.postEvent("Placement cancelled.")
+            world.postEvent(L10n.string(L10n.Event.placementCancelled))
         }
     }
 
     private func moveStaff(to position: GridPosition) {
-        guard let staffIndex = world.entities.firstIndex(where: { $0.role == .staff }) else {
+        guard let staffIndex = world.firstEntityIndex(role: .staff) else {
             return
         }
 
         guard world.isWalkable(position, ignoring: world.entities[staffIndex].id) else {
-            world.postEvent("Tile blocked.")
+            world.postEvent(L10n.string(L10n.Event.tileBlocked))
             return
         }
 
         world.entities[staffIndex].position = position
-        world.postEvent("Mia moved to tile \(position.column), \(position.row).")
+        world.postEvent(L10n.format(L10n.Event.staffMoved, world.entities[staffIndex].name, position.column, position.row))
     }
 
     private func handlePlacementTap(_ target: SceneTapTarget, blueprint: FurnitureBlueprint) {
         guard case .tile(let position) = target else {
-            world.postEvent("Pick an empty floor tile.")
+            world.postEvent(L10n.string(L10n.Event.pickEmptyFloorTile))
             return
         }
 
         if world.placeFurniture(blueprint, at: position) {
             selectedBlueprint = nil
         } else {
-            world.postEvent("Can't place \(blueprint.displayName) there.")
+            world.postEvent(L10n.format(L10n.Event.cannotPlace, blueprint.displayName))
         }
     }
 }

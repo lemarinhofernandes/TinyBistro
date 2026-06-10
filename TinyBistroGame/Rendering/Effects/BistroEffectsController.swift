@@ -51,7 +51,7 @@ final class BistroEffectsController {
         world: BistroWorld,
         furnitureNodes: [Furniture.ID: SCNNode]
     ) {
-        guard world.orders.contains(where: { $0.status == .cooking }),
+        guard world.firstOrder(status: .cooking) != nil,
               let stoveNode = node(for: .stove, in: world, furnitureNodes: furnitureNodes)
         else {
             removeEffect(named: Constants.cookingGlowName)
@@ -70,7 +70,7 @@ final class BistroEffectsController {
         furnitureNodes: [Furniture.ID: SCNNode],
         entityNodes: [Entity.ID: SCNNode]
     ) {
-        guard let readyOrder = world.orders.first(where: { $0.status == .ready }) else {
+        guard let readyOrder = world.firstOrder(status: .ready) else {
             removeEffect(named: Constants.readyCounterGlowName)
             removeActiveReadyCustomerGlow(from: entityNodes)
             return
@@ -119,7 +119,7 @@ final class BistroEffectsController {
             let progress = world.waitTimeout > 0 ? remainingTime / world.waitTimeout : 0
             let material = Self.patienceBarMaterial(
                 progress: progress,
-                remainingSeconds: Int(ceil(remainingTime))
+                remainingTime: remainingTime
             )
             let effectName = patienceBarName(for: customer.id)
 
@@ -145,7 +145,7 @@ final class BistroEffectsController {
         in world: BistroWorld,
         furnitureNodes: [Furniture.ID: SCNNode]
     ) -> SCNNode? {
-        guard let furniture = world.furniture.first(where: { $0.kind == kind }) else {
+        guard let furniture = world.firstFurniture(of: kind) else {
             return nil
         }
 
@@ -188,20 +188,19 @@ final class BistroEffectsController {
     }
 
     private func readyBadgeNode(name: String, y: Float) -> SCNNode {
-        let node = SCNNode()
-        node.name = name
-        node.position.y = y
-        node.constraints = [SCNBillboardConstraint()]
-
-        let geometry = SCNPlane(width: Constants.readyBadgeWidth, height: Constants.readyBadgeHeight)
-        geometry.materials = [Self.readyBadgeMaterial()]
-        node.geometry = geometry
+        let node = SceneBillboardFactory.billboardNode(
+            name: name,
+            width: Constants.readyBadgeWidth,
+            height: Constants.readyBadgeHeight,
+            y: y,
+            image: Self.readyBadgeImage()
+        )
 
         let scaleUp = SCNAction.scale(to: Constants.readyPulseScale, duration: Constants.readyPulseDuration)
         scaleUp.timingMode = .easeInEaseOut
         let scaleDown = SCNAction.scale(to: 1, duration: Constants.readyPulseDuration)
         scaleDown.timingMode = .easeInEaseOut
-        node.runAction(.repeatForever(.sequence([scaleUp, scaleDown])))
+        node.runAction(SCNAction.repeatForever(SCNAction.sequence([scaleUp, scaleDown])))
 
         return node
     }
@@ -244,23 +243,9 @@ final class BistroEffectsController {
         return material
     }
 
-    private static func readyBadgeMaterial() -> SCNMaterial {
-        let image = readyBadgeImage()
-        let material = SCNMaterial()
-        material.diffuse.contents = image
-        material.emission.contents = image
-        material.lightingModel = .constant
-        material.isDoubleSided = true
-        material.writesToDepthBuffer = false
-        return material
-    }
-
     private static func readyBadgeImage() -> UIImage {
         let size = CGSize(width: 220, height: 92)
-        let renderer = UIGraphicsImageRenderer(size: size)
-
-        return renderer.image { context in
-            let cgContext = context.cgContext
+        return SceneBillboardFactory.renderImage(size: size) { cgContext in
             let rect = CGRect(x: 12, y: 16, width: size.width - 24, height: size.height - 32)
             let path = UIBezierPath(roundedRect: rect, cornerRadius: 24)
 
@@ -290,24 +275,16 @@ final class BistroEffectsController {
         }
     }
 
-    private static func patienceBarMaterial(progress: Double, remainingSeconds: Int) -> SCNMaterial {
-        let image = patienceBarImage(progress: progress, remainingSeconds: remainingSeconds)
-        let material = SCNMaterial()
-        material.diffuse.contents = image
-        material.emission.contents = image
-        material.lightingModel = .constant
-        material.isDoubleSided = true
-        material.writesToDepthBuffer = false
-        return material
+    private static func patienceBarMaterial(progress: Double, remainingTime: TimeInterval) -> SCNMaterial {
+        SceneBillboardFactory.imageMaterial(
+            patienceBarImage(progress: progress, remainingTime: remainingTime)
+        )
     }
 
-    private static func patienceBarImage(progress: Double, remainingSeconds: Int) -> UIImage {
+    private static func patienceBarImage(progress: Double, remainingTime: TimeInterval) -> UIImage {
         let size = CGSize(width: 220, height: 54)
-        let progress = min(max(progress, 0), 1)
-        let renderer = UIGraphicsImageRenderer(size: size)
-
-        return renderer.image { context in
-            let cgContext = context.cgContext
+        let progress = GeometryUtils.clamp(progress, min: 0, max: 1)
+        return SceneBillboardFactory.renderImage(size: size) { cgContext in
             let outerRect = CGRect(x: 8, y: 10, width: size.width - 16, height: 34)
             let innerRect = outerRect.insetBy(dx: 5, dy: 6)
             let fillWidth = max(8, innerRect.width * progress)
@@ -330,7 +307,7 @@ final class BistroEffectsController {
             UIColor.white.withAlphaComponent(0.56).setFill()
             UIBezierPath(roundedRect: glossRect, cornerRadius: 4).fill()
 
-            let label = "\(remainingSeconds)s"
+            let label = TimeUtils.formattedCountdown(remainingTime)
             let attributes: [NSAttributedString.Key: Any] = [
                 .font: UIFont.monospacedDigitSystemFont(ofSize: 17, weight: .black),
                 .foregroundColor: UIColor(hex: 0xFFF3D9),

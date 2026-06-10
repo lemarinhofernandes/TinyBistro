@@ -19,7 +19,7 @@ struct GameScreen: View {
                     onOpenShop: game.openShop,
                     onSelectBlueprint: game.selectBlueprint,
                     onAction: { action in
-                        game.showComingSoon(action.rawValue)
+                        game.showComingSoon(action.title)
                     }
                 )
             }

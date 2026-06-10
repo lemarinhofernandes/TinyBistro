@@ -200,7 +200,7 @@ struct BistroTicketView: View {
                     recipeIcon
 
                     VStack(alignment: .leading, spacing: BistroTheme.Spacing.xSmall) {
-                        Text(order?.recipe.name ?? "No active ticket")
+                        Text(order?.recipe.name ?? L10n.string(L10n.HUD.noActiveTicket))
                             .font(BistroTheme.Fonts.title(18))
                             .foregroundStyle(BistroTheme.Colors.offWhite)
                             .lineLimit(1)
@@ -260,14 +260,14 @@ struct BistroTicketView: View {
 
     private var orderSubtitle: String {
         guard let order else {
-            return "Waiting for a customer"
+            return L10n.string(L10n.HUD.waitingForCustomer)
         }
 
-        return "Ticket for guest \(order.customerID.uuidString.prefix(4))"
+        return L10n.format(L10n.HUD.ticketForGuest, String(order.customerID.uuidString.prefix(4)))
     }
 
     private var statusText: String {
-        order?.status.rawValue ?? "Idle"
+        order?.status.displayName ?? L10n.string(L10n.HUD.idle)
     }
 
     private var statusIcon: String {
@@ -328,15 +328,15 @@ struct BistroTicketView: View {
 
         switch order.status {
         case .created:
-            return "Waiting"
+            return L10n.string(L10n.HUD.waiting)
         case .cooking:
             return "\(Int(ceil(order.remainingTime)))s"
         case .ready:
-            return "Ready"
+            return L10n.string(L10n.HUD.ready)
         case .delivered:
-            return "Delivered"
+            return L10n.string(L10n.HUD.delivered)
         case .completed:
-            return "Done"
+            return L10n.string(L10n.HUD.done)
         }
     }
 }
@@ -349,7 +349,7 @@ struct BistroScoreView: View {
     var body: some View {
         BistroPanel(tone: .copper) {
             VStack(alignment: .leading, spacing: BistroTheme.Spacing.medium) {
-                Text("Score")
+                Text(L10n.string(L10n.HUD.score))
                     .font(BistroTheme.Fonts.heading(13))
                     .foregroundStyle(BistroTheme.Colors.graphite.opacity(0.8))
                     .textCase(.uppercase)
@@ -364,7 +364,7 @@ struct BistroScoreView: View {
                 .monospacedDigit()
 
                 if lost > 0 {
-                    BistroBadge(text: "Lost \(lost)", tint: BistroTheme.Colors.tomato, icon: "exclamationmark.triangle.fill")
+                    BistroBadge(text: L10n.format(L10n.HUD.lostCount, lost), tint: BistroTheme.Colors.tomato, icon: "exclamationmark.triangle.fill")
                 }
             }
         }

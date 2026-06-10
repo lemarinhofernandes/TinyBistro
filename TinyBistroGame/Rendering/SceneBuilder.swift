@@ -58,7 +58,7 @@ enum SceneBuilder {
         node.name = "camera"
         node.camera = camera
         node.position = SCNVector3(5.7, 6.8, 7.4)
-        node.eulerAngles = SCNVector3(-Float.pi / 4.0, Float.pi / 4.0, 0)
+        node.eulerAngles = SCNVector3(-Float(GeometryUtils.radians(fromDegrees: 45)), Float(GeometryUtils.radians(fromDegrees: 45)), 0)
         return node
     }
 
@@ -72,7 +72,7 @@ enum SceneBuilder {
         let node = SCNNode()
         node.name = "key-light"
         node.light = light
-        node.eulerAngles = SCNVector3(-Float.pi / 3.0, Float.pi / 4.0, 0)
+        node.eulerAngles = SCNVector3(-Float(GeometryUtils.radians(fromDegrees: 60)), Float(GeometryUtils.radians(fromDegrees: 45)), 0)
         return node
     }
 

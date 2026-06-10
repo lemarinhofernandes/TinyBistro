@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum BistroCampTheme {
-    static let hudScale: CGFloat = 0.80
+    static let hudScale: CGFloat = 0.85
 
     enum Colors {
         static let varnishOrange = Color(hex: 0xF59E42)

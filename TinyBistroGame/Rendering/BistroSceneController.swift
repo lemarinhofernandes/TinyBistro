@@ -73,9 +73,10 @@ final class BistroSceneController {
         }
 
         let nextScale = camera.orthographicScale / Double(scale)
-        camera.orthographicScale = min(
-            max(nextScale, Constants.minOrthographicScale),
-            Constants.maxOrthographicScale
+        camera.orthographicScale = GeometryUtils.clamp(
+            nextScale,
+            min: Constants.minOrthographicScale,
+            max: Constants.maxOrthographicScale
         )
     }
 
@@ -84,8 +85,8 @@ final class BistroSceneController {
         let halfDepth = CGFloat(world.gridSize.rows) / 2
 
         return CGPoint(
-            x: min(max(x, -halfWidth - Constants.cameraPanMargin), halfWidth + Constants.cameraPanMargin),
-            y: min(max(z, -halfDepth - Constants.cameraPanMargin), halfDepth + Constants.cameraPanMargin)
+            x: GeometryUtils.clamp(x, min: -halfWidth - Constants.cameraPanMargin, max: halfWidth + Constants.cameraPanMargin),
+            y: GeometryUtils.clamp(z, min: -halfDepth - Constants.cameraPanMargin, max: halfDepth + Constants.cameraPanMargin)
         )
     }
 

@@ -12,15 +12,15 @@ enum FurnitureBlueprint: String, CaseIterable, Identifiable, Sendable {
     var displayName: String {
         switch self {
         case .table:
-            return "Table"
+            return L10n.string(L10n.Furniture.table)
         case .chair:
-            return "Chair"
+            return L10n.string(L10n.Furniture.chair)
         case .stove:
-            return "Stove"
+            return L10n.string(L10n.Furniture.stove)
         case .counter:
-            return "Counter"
+            return L10n.string(L10n.Furniture.counter)
         case .entrance:
-            return "Entrance"
+            return L10n.string(L10n.Furniture.entrance)
         }
     }
 

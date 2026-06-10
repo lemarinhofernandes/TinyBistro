@@ -1,6 +1,8 @@
 import SwiftUI
 
 enum BistroTheme {
+    static let hudScale: CGFloat = 0.85
+
     enum Colors {
         static let wood = Color(hex: 0x8C5A3C)
         static let deepWood = Color(hex: 0x5D3827)

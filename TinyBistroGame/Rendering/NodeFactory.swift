@@ -126,39 +126,24 @@ enum NodeFactory {
     }
 
     static func timeoutEffectNode() -> SCNNode {
-        let root = SCNNode()
-        root.name = Constants.timeoutEffectNodeName
-        root.position = SCNVector3(0, Constants.timeoutEffectY, 0)
+        let root = SceneBillboardFactory.billboardNode(
+            name: Constants.timeoutEffectNodeName,
+            width: Constants.timeoutPlaneWidth,
+            height: Constants.timeoutPlaneHeight,
+            y: Constants.timeoutEffectY,
+            image: timeoutEffectImage()
+        )
+
         root.scale = SCNVector3(
             Constants.timeoutEffectInitialScale,
             Constants.timeoutEffectInitialScale,
             Constants.timeoutEffectInitialScale
         )
-        root.constraints = [SCNBillboardConstraint()]
-
-        let geometry = SCNPlane(width: Constants.timeoutPlaneWidth, height: Constants.timeoutPlaneHeight)
-        geometry.materials = [timeoutEffectMaterial()]
-        root.geometry = geometry
-
         return root
     }
 
-    private static func timeoutEffectMaterial() -> SCNMaterial {
-        let material = SCNMaterial()
-        material.diffuse.contents = timeoutEffectImage()
-        material.emission.contents = timeoutEffectImage()
-        material.lightingModel = .constant
-        material.isDoubleSided = true
-        return material
-    }
-
     private static func timeoutEffectImage() -> UIImage {
-        let size = Constants.timeoutImageSize
-        let renderer = UIGraphicsImageRenderer(size: size)
-
-        return renderer.image { context in
-            let cgContext = context.cgContext
-
+        SceneBillboardFactory.renderImage(size: Constants.timeoutImageSize) { cgContext in
             cgContext.setShadow(
                 offset: .zero,
                 blur: Constants.timeoutShadowBlur,

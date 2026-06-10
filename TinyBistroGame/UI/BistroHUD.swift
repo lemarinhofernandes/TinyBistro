@@ -1,10 +1,23 @@
 import SwiftUI
 
-enum BistroHUDAction: String {
-    case buy = "Comprar"
-    case staff = "Funcionarios"
-    case ingredients = "Ingredientes"
-    case furniture = "Moveis"
+enum BistroHUDAction {
+    case buy
+    case staff
+    case ingredients
+    case furniture
+
+    var title: String {
+        switch self {
+        case .buy:
+            return L10n.string(L10n.HUD.buy)
+        case .staff:
+            return L10n.string(L10n.HUD.staff)
+        case .ingredients:
+            return L10n.string(L10n.HUD.items)
+        case .furniture:
+            return L10n.string(L10n.HUD.decor)
+        }
+    }
 }
 
 struct BistroHUD: View {
@@ -45,20 +58,20 @@ struct BistroHUD: View {
             CampPanel(tint: BistroCampTheme.Colors.varnishOrange) {
                 HStack(spacing: BistroCampTheme.Spacing.medium) {
                     CampOutlinedText(
-                        text: "Tiny Bistro",
+                        text: L10n.string(L10n.HUD.tinyBistro),
                         font: BistroCampTheme.Fonts.camp(23),
                         fill: BistroCampTheme.Colors.cream,
                         outline: BistroCampTheme.Colors.tomato.opacity(0.82),
                         outlineWidth: 1.2
                     )
 
-                    Text("Closed")
+                    Text(L10n.string(L10n.HUD.closed))
                         .font(BistroCampTheme.Fonts.rounded(13, weight: .heavy))
                         .foregroundStyle(BistroCampTheme.Colors.graphite)
 
                     Spacer(minLength: BistroCampTheme.Spacing.small)
 
-                    BistroCampButton(title: "Open", systemImage: "storefront.fill", variant: .secondary, action: onOpenShop)
+                    BistroCampButton(title: L10n.string(L10n.HUD.open), systemImage: "storefront.fill", variant: .secondary, action: onOpenShop)
                 }
             }
             .frame(maxWidth: 520)
@@ -119,7 +132,7 @@ struct BistroHUD: View {
     private var contextualButtons: some View {
         HStack(spacing: BistroCampTheme.Spacing.small) {
             BistroCampButton(
-                title: "Cook",
+                title: L10n.string(L10n.HUD.cook),
                 systemImage: "flame.fill",
                 variant: .primary,
                 isEnabled: world.activeOrder?.status == .created,
@@ -127,7 +140,7 @@ struct BistroHUD: View {
             )
 
             BistroCampButton(
-                title: "Deliver",
+                title: L10n.string(L10n.HUD.deliver),
                 systemImage: "takeoutbag.and.cup.and.straw.fill",
                 variant: .secondary,
                 isEnabled: world.activeOrder?.status == .ready,
@@ -162,16 +175,16 @@ struct BistroHUD: View {
 
     private var managementButtons: some View {
         Group {
-            BistroCampButton(title: "Buy", systemImage: "cart.fill", variant: .primary) {
+            BistroCampButton(title: L10n.string(L10n.HUD.buy), systemImage: "cart.fill", variant: .primary) {
                 onAction(.buy)
             }
-            BistroCampButton(title: "Staff", systemImage: "person.2.fill", variant: .secondary) {
+            BistroCampButton(title: L10n.string(L10n.HUD.staff), systemImage: "person.2.fill", variant: .secondary) {
                 onAction(.staff)
             }
-            BistroCampButton(title: "Items", systemImage: "carrot.fill", variant: .neutral) {
+            BistroCampButton(title: L10n.string(L10n.HUD.items), systemImage: "carrot.fill", variant: .neutral) {
                 onAction(.ingredients)
             }
-            BistroCampButton(title: "Decor", systemImage: "chair.lounge.fill", variant: .destructive) {
+            BistroCampButton(title: L10n.string(L10n.HUD.decor), systemImage: "chair.lounge.fill", variant: .destructive) {
                 onAction(.furniture)
             }
         }
@@ -186,7 +199,7 @@ struct BistroHUD: View {
     private var utilityToggleButtons: some View {
         HStack(spacing: BistroCampTheme.Spacing.small) {
             BistroCampButton(
-                title: showsUtilityButtons ? "Back" : "More",
+                title: showsUtilityButtons ? L10n.string(L10n.HUD.back) : L10n.string(L10n.HUD.more),
                 systemImage: showsUtilityButtons ? "arrow.uturn.left" : "square.grid.2x2.fill",
                 variant: .neutral
             ) {
@@ -266,7 +279,7 @@ private struct CampTicketView: View {
 
                     VStack(alignment: .leading, spacing: BistroCampTheme.Spacing.xSmall) {
                         CampOutlinedText(
-                            text: order?.recipe.name ?? "No ticket yet",
+                            text: order?.recipe.name ?? L10n.string(L10n.HUD.noTicketYet),
                             font: BistroCampTheme.Fonts.camp(18),
                             fill: BistroCampTheme.Colors.cream,
                             outline: BistroCampTheme.Colors.tomato.opacity(0.78),
@@ -318,14 +331,14 @@ private struct CampTicketView: View {
 
     private var subtitle: String {
         guard let order else {
-            return "Waiting for the next guest"
+            return L10n.string(L10n.HUD.waitingForNextGuest)
         }
 
-        return "Guest \(order.customerID.uuidString.prefix(4))"
+        return L10n.format(L10n.HUD.guestPrefix, String(order.customerID.uuidString.prefix(4)))
     }
 
     private var statusText: String {
-        order?.status.rawValue ?? "Idle"
+        order?.status.displayName ?? L10n.string(L10n.HUD.idle)
     }
 
     private var statusIcon: String {
@@ -386,15 +399,15 @@ private struct CampTicketView: View {
 
         switch order.status {
         case .created:
-            return "Waiting"
+            return L10n.string(L10n.HUD.waiting)
         case .cooking:
-            return "\(Int(ceil(order.remainingTime)))s"
+            return TimeUtils.formattedCountdown(order.remainingTime)
         case .ready:
-            return "READY!"
+            return L10n.string(L10n.HUD.ready)
         case .delivered:
-            return "Delivered"
+            return L10n.string(L10n.HUD.delivered)
         case .completed:
-            return "Done"
+            return L10n.string(L10n.HUD.done)
         }
     }
 }
@@ -441,7 +454,7 @@ private struct CampScorePill: View {
                 .monospacedDigit()
 
             if lost > 0 {
-                Text("Lost \(lost)")
+                Text(L10n.format(L10n.HUD.lostCount, lost))
                     .font(BistroCampTheme.Fonts.score(10))
                     .monospacedDigit()
                     .padding(.horizontal, 6)
@@ -467,7 +480,7 @@ private struct CampScoreView: View {
         CampPanel(tint: BistroCampTheme.Colors.cobalt) {
             VStack(alignment: .leading, spacing: BistroCampTheme.Spacing.small) {
                 CampOutlinedText(
-                    text: "Score",
+                    text: L10n.string(L10n.HUD.score),
                     font: BistroCampTheme.Fonts.camp(13),
                     fill: BistroCampTheme.Colors.cream,
                     outline: .black.opacity(0.65),
@@ -486,7 +499,7 @@ private struct CampScoreView: View {
 
                 if lost > 0 {
                     CampStatusBadge(
-                        text: "Lost \(lost)",
+                        text: L10n.format(L10n.HUD.lostCount, lost),
                         color: BistroCampTheme.Colors.tomato,
                         icon: "exclamationmark.triangle.fill"
                     )

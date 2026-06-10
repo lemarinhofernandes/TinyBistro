@@ -28,15 +28,15 @@ enum StaffState: Hashable, Sendable {
     var displayName: String {
         switch self {
         case .idle:
-            return "Idle"
+            return L10n.string(L10n.StaffState.idle)
         case .moving:
-            return "Moving"
+            return L10n.string(L10n.StaffState.moving)
         case .cooking:
-            return "Cooking"
+            return L10n.string(L10n.StaffState.cooking)
         case .carryingDish:
-            return "Carrying dish"
+            return L10n.string(L10n.StaffState.carryingDish)
         case .delivering:
-            return "Delivering"
+            return L10n.string(L10n.StaffState.delivering)
         }
     }
 }
@@ -71,7 +71,7 @@ enum CustomerState: String, Sendable {
 }
 
 struct Entity: Identifiable, Hashable, Sendable {
-    let id: UUID
+    let id: EntityID
     var name: String
     var role: EntityRole
     var position: GridPosition
@@ -81,7 +81,7 @@ struct Entity: Identifiable, Hashable, Sendable {
     var stateElapsedTime: TimeInterval
 
     init(
-        id: UUID = UUID(),
+        id: EntityID = UUID(),
         name: String,
         role: EntityRole,
         position: GridPosition,

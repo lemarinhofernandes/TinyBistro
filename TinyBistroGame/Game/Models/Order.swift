@@ -20,18 +20,33 @@ enum OrderStatus: String, Sendable {
     case ready = "Ready"
     case delivered = "Delivered"
     case completed = "Completed"
+
+    var displayName: String {
+        switch self {
+        case .created:
+            return L10n.string(L10n.OrderState.created)
+        case .cooking:
+            return L10n.string(L10n.OrderState.cooking)
+        case .ready:
+            return L10n.string(L10n.OrderState.ready)
+        case .delivered:
+            return L10n.string(L10n.OrderState.delivered)
+        case .completed:
+            return L10n.string(L10n.OrderState.completed)
+        }
+    }
 }
 
 struct Order: Identifiable, Hashable, Sendable {
-    let id: UUID
-    var customerID: Entity.ID
+    let id: OrderID
+    var customerID: EntityID
     var recipe: Recipe
     var status: OrderStatus
     var remainingTime: TimeInterval
 
     init(
-        id: UUID = UUID(),
-        customerID: Entity.ID,
+        id: OrderID = UUID(),
+        customerID: EntityID,
         recipe: Recipe,
         status: OrderStatus = .created,
         remainingTime: TimeInterval? = nil

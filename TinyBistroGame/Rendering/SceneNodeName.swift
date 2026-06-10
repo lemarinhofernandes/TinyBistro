@@ -16,6 +16,7 @@ enum SceneNodeName {
         "entity\(separator)\(id.uuidString)"
     }
 
+    /// Walks up the hit-tested node chain and resolves the nearest gameplay target.
     static func target(from node: SCNNode?) -> SceneTapTarget? {
         var current = node
 

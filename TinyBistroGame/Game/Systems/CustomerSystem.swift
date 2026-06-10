@@ -13,8 +13,8 @@ enum CustomerSystem {
     static func spawnCustomer(in world: inout BistroWorld) {
         guard world.sessionState == .inProgress,
               world.activeCustomer == nil,
-              let entrance = world.furniture.first(where: { $0.kind == .entrance }),
-              let chair = world.furniture.first(where: { $0.kind == .chair && $0.occupiedBy == nil })
+              let entrance = world.firstFurniture(of: .entrance),
+              let chair = world.firstFurniture(of: .chair, where: { $0.occupiedBy == nil })
         else {
             return
         }
@@ -29,11 +29,11 @@ enum CustomerSystem {
 
         world.nextCustomerNumber += 1
         world.entities.append(customer)
-        world.postEvent("\(customer.name) is heading to the table.")
+        world.postEvent(L10n.format(L10n.Event.customerHeadingToTable, customer.name))
     }
 
     static func tick(world: inout BistroWorld, deltaTime: TimeInterval) {
-        guard let index = world.entities.firstIndex(where: { $0.role == .customer }) else {
+        guard let index = world.firstEntityIndex(role: .customer) else {
             if world.sessionState == .inProgress {
                 spawnCustomer(in: &world)
             }
@@ -62,7 +62,7 @@ enum CustomerSystem {
         case .seated where customer.stateElapsedTime >= Constants.seatedPauseDuration:
             world.entities[index].customerState = .ordering
             world.entities[index].stateElapsedTime = 0
-            world.postEvent("\(customer.name) is choosing a recipe.")
+            world.postEvent(L10n.format(L10n.Event.customerChoosingRecipe, customer.name))
 
         case .ordering where customer.stateElapsedTime >= Constants.orderingDuration:
             createOrderIfNeeded(world: &world, customerIndex: index)
@@ -87,11 +87,13 @@ enum CustomerSystem {
             world.entities[customerIndex].customerState = .seated
             world.entities[customerIndex].stateElapsedTime = 0
 
-            if let chairIndex = world.furniture.firstIndex(where: { $0.kind == .chair }) {
+            if let chairIndex = world.furniture.firstIndex(where: {
+                $0.kind == .chair && $0.position == world.entities[customerIndex].position
+            }) {
                 world.furniture[chairIndex].occupiedBy = world.entities[customerIndex].id
             }
 
-            world.postEvent("\(world.entities[customerIndex].name) sat down.")
+            world.postEvent(L10n.format(L10n.Event.customerSatDown, world.entities[customerIndex].name))
 
         case .leaving:
             finishVisit(world: &world, customerIndex: customerIndex)
@@ -103,7 +105,7 @@ enum CustomerSystem {
 
     private static func createOrderIfNeeded(world: inout BistroWorld, customerIndex: Int) {
         let customer = world.entities[customerIndex]
-        guard world.orders.allSatisfy({ $0.customerID != customer.id || $0.status == .completed }) else {
+        guard world.activeOrder(for: customer.id) == nil else {
             return
         }
 
@@ -111,11 +113,11 @@ enum CustomerSystem {
         world.orders.append(order)
         world.entities[customerIndex].customerState = .waitingForFood
         world.entities[customerIndex].stateElapsedTime = 0
-        world.postEvent("\(customer.name) ordered \(order.recipe.name). Tap the stove.")
+        world.postEvent(L10n.format(L10n.Event.customerOrdered, customer.name, order.recipe.name))
     }
 
     private static func sendCustomerHome(world: inout BistroWorld, customerIndex: Int) {
-        guard let entrance = world.furniture.first(where: { $0.kind == .entrance }) else {
+        guard let entrance = world.firstFurniture(of: .entrance) else {
             return
         }
 
@@ -124,15 +126,15 @@ enum CustomerSystem {
         world.entities[customerIndex].destination = entrance.position
         world.entities[customerIndex].stateElapsedTime = 0
 
-        if let chairIndex = world.furniture.firstIndex(where: { $0.occupiedBy == customerID }) {
+        if let chairIndex = world.firstFurnitureIndex(occupiedBy: customerID) {
             world.furniture[chairIndex].occupiedBy = nil
         }
 
-        world.postEvent("\(world.entities[customerIndex].name) is leaving happy.")
+        world.postEvent(L10n.format(L10n.Event.guestLeavingHappy, world.entities[customerIndex].name))
     }
 
     private static func sendCustomerAwayHungry(world: inout BistroWorld, customerIndex: Int) {
-        guard let entrance = world.furniture.first(where: { $0.kind == .entrance }) else {
+        guard let entrance = world.firstFurniture(of: .entrance) else {
             return
         }
 
@@ -145,16 +147,16 @@ enum CustomerSystem {
         world.orders.removeAll { $0.customerID == customer.id }
         world.lostCustomers += 1
 
-        if let chairIndex = world.furniture.firstIndex(where: { $0.occupiedBy == customer.id }) {
+        if let chairIndex = world.firstFurnitureIndex(occupiedBy: customer.id) {
             world.furniture[chairIndex].occupiedBy = nil
         }
 
-        if let staffIndex = world.entities.firstIndex(where: { $0.role == .staff }),
+        if let staffIndex = world.firstEntityIndex(role: .staff),
            staffStateReferencesAbandonedOrder(world.entities[staffIndex].staffState, abandonedOrderIDs: abandonedOrderIDs) {
             world.entities[staffIndex].staffState = .idle
         }
 
-        world.postEvent("\(customer.name) left unhappy.")
+        world.postEvent(L10n.format(L10n.Event.guestLeftUnhappy, customer.name))
     }
 
     private static func finishVisit(world: inout BistroWorld, customerIndex: Int) {
@@ -173,9 +175,9 @@ enum CustomerSystem {
 
         if world.servedCustomers >= world.targetServed {
             world.sessionState = .success
-            world.postEvent("Goal reached! Served \(world.servedCustomers).")
+            world.postEvent(L10n.format(L10n.Event.goalReached, world.servedCustomers))
         } else {
-            world.postEvent("\(name) left. Served customers: \(world.servedCustomers).")
+            world.postEvent(L10n.format(L10n.Event.guestLeft, name, world.servedCustomers))
         }
     }
 
