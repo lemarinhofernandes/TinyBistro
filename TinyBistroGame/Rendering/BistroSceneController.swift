@@ -20,10 +20,12 @@ final class BistroSceneController {
     private var furnitureNodes: [Furniture.ID: SCNNode] = [:]
     private var entityNodes: [Entity.ID: SCNNode] = [:]
     private var selectionNode: SCNNode?
+    private let effectsController: BistroEffectsController
 
     init(world: BistroWorld) {
         self.world = world
         self.scene = SceneBuilder.buildBaseScene(world: world)
+        self.effectsController = BistroEffectsController(scene: scene)
         sync(to: world, animated: false)
     }
 
@@ -33,6 +35,7 @@ final class BistroSceneController {
         syncFurniture(world: world)
         syncEntities(world: world, animated: animated)
         syncTimeoutEffects(previousWorld: previousWorld, world: world)
+        effectsController.sync(world: world, furnitureNodes: furnitureNodes, entityNodes: entityNodes)
         syncSelection(world: world)
     }
 

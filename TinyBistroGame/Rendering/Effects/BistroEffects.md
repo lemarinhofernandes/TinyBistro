@@ -8,6 +8,16 @@ This folder is the extension point for lightweight 3D/Metal effects. Effects mus
 - Timeout pop: SceneKit billboard particles or planes near the customer.
 - Cooking warmth: small amber emission increase on the stove while cooking.
 
+## Current Implementation
+
+`BistroEffectsController` is the rendering-only coordination point for these effects.
+
+- While any order is `cooking`, the stove receives an amber pulsing burner glow plus a small local light.
+- While an order is `ready`, the counter and matching customer receive a billboarded `READY` badge with green glass glow.
+- Timeout feedback remains a one-shot customer-attached billboard created by `BistroSceneController`.
+
+The controller reads `BistroWorld` and existing SceneKit nodes, but it does not mutate gameplay state.
+
 ## Cost Guidelines
 
 - Prefer `SCNMaterial` emission, transparency, and shader modifiers before adding Metal.

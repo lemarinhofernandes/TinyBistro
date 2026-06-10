@@ -77,6 +77,10 @@ final class BistroGame: ObservableObject {
         CookingSystem.deliverReadyOrder(world: &world)
     }
 
+    func showComingSoon(_ feature: String) {
+        world.postEvent("\(feature): em breve.")
+    }
+
     private func moveStaff(to position: GridPosition) {
         guard let staffIndex = world.entities.firstIndex(where: { $0.role == .staff }) else {
             return

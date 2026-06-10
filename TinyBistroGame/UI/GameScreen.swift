@@ -14,7 +14,10 @@ struct GameScreen: View {
                 GameHUD(
                     world: game.world,
                     onStartCooking: game.startCooking,
-                    onDeliver: game.deliverOrder
+                    onDeliver: game.deliverOrder,
+                    onAction: { action in
+                        game.showComingSoon(action.rawValue)
+                    }
                 )
             }
             .task(id: timeline.date) {
