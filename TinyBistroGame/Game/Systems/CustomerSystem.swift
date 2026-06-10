@@ -28,7 +28,7 @@ enum CustomerSystem {
 
         world.nextCustomerNumber += 1
         world.entities.append(customer)
-        world.statusMessage = "\(customer.name) is heading to the table."
+        world.postEvent("\(customer.name) is heading to the table.")
     }
 
     static func tick(world: inout BistroWorld, deltaTime: TimeInterval) {
@@ -57,7 +57,7 @@ enum CustomerSystem {
         case .seated where customer.stateElapsedTime >= Constants.seatedPauseDuration:
             world.entities[index].customerState = .ordering
             world.entities[index].stateElapsedTime = 0
-            world.statusMessage = "\(customer.name) is choosing a recipe."
+            world.postEvent("\(customer.name) is choosing a recipe.")
 
         case .ordering where customer.stateElapsedTime >= Constants.orderingDuration:
             createOrderIfNeeded(world: &world, customerIndex: index)
@@ -86,7 +86,7 @@ enum CustomerSystem {
                 world.furniture[chairIndex].occupiedBy = world.entities[customerIndex].id
             }
 
-            world.statusMessage = "\(world.entities[customerIndex].name) sat down."
+            world.postEvent("\(world.entities[customerIndex].name) sat down.")
 
         case .leaving:
             finishVisit(world: &world, customerIndex: customerIndex)
@@ -106,7 +106,7 @@ enum CustomerSystem {
         world.orders.append(order)
         world.entities[customerIndex].customerState = .waitingForFood
         world.entities[customerIndex].stateElapsedTime = 0
-        world.statusMessage = "\(customer.name) ordered \(order.recipe.name). Tap the stove."
+        world.postEvent("\(customer.name) ordered \(order.recipe.name). Tap the stove.")
     }
 
     private static func sendCustomerHome(world: inout BistroWorld, customerIndex: Int) {
@@ -123,7 +123,7 @@ enum CustomerSystem {
             world.furniture[chairIndex].occupiedBy = nil
         }
 
-        world.statusMessage = "\(world.entities[customerIndex].name) is leaving happy."
+        world.postEvent("\(world.entities[customerIndex].name) is leaving happy.")
     }
 
     private static func sendCustomerAwayHungry(world: inout BistroWorld, customerIndex: Int) {
@@ -149,7 +149,7 @@ enum CustomerSystem {
             world.entities[staffIndex].staffState = .idle
         }
 
-        world.statusMessage = "\(customer.name) left unhappy."
+        world.postEvent("\(customer.name) left unhappy.")
     }
 
     private static func finishVisit(world: inout BistroWorld, customerIndex: Int) {
@@ -168,9 +168,9 @@ enum CustomerSystem {
 
         if world.servedCustomers >= world.targetServed {
             world.sessionState = .success
-            world.statusMessage = "Goal reached! Served \(world.servedCustomers)."
+            world.postEvent("Goal reached! Served \(world.servedCustomers).")
         } else {
-            world.statusMessage = "\(name) left. Served customers: \(world.servedCustomers)."
+            world.postEvent("\(name) left. Served customers: \(world.servedCustomers).")
         }
     }
 

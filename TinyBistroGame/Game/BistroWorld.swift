@@ -12,6 +12,7 @@ struct BistroWorld: Sendable {
     var orders: [Order]
     var selectedTarget: SceneTapTarget?
     var statusMessage: String
+    var lastEventID: Int
     var servedCustomers: Int
     var lostCustomers: Int
     var targetServed: Int
@@ -29,6 +30,15 @@ struct BistroWorld: Sendable {
 
     var activeOrder: Order? {
         orders.first { $0.status != .completed }
+    }
+
+    mutating func postEvent(_ text: String) {
+        guard statusMessage != text else {
+            return
+        }
+
+        lastEventID += 1
+        statusMessage = text
     }
 
     static var firstRoom: BistroWorld {
@@ -51,6 +61,7 @@ struct BistroWorld: Sendable {
             orders: [],
             selectedTarget: nil,
             statusMessage: "Tap the stove when the first order appears.",
+            lastEventID: 0,
             servedCustomers: 0,
             lostCustomers: 0,
             targetServed: 5,

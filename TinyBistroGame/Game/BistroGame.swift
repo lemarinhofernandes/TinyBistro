@@ -46,7 +46,7 @@ final class BistroGame: ObservableObject {
             if furniture.kind == .stove || furniture.kind == .counter {
                 CookingSystem.startCooking(world: &world)
             } else {
-                world.statusMessage = "Selected \(furniture.kind.rawValue)."
+                world.postEvent("Selected \(furniture.kind.rawValue).")
             }
 
         case .entity(let id):
@@ -57,7 +57,7 @@ final class BistroGame: ObservableObject {
             if entity.role == .customer {
                 CookingSystem.deliverReadyOrder(world: &world, customerID: id)
             } else {
-                world.statusMessage = "\(entity.name) is \(entity.staffState?.displayName.lowercased() ?? "ready")."
+                world.postEvent("\(entity.name) is \(entity.staffState?.displayName.lowercased() ?? "ready").")
             }
 
         case .tile(let position):
@@ -83,6 +83,6 @@ final class BistroGame: ObservableObject {
         }
 
         world.entities[staffIndex].position = position
-        world.statusMessage = "Mia moved to tile \(position.column), \(position.row)."
+        world.postEvent("Mia moved to tile \(position.column), \(position.row).")
     }
 }
