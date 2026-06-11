@@ -28,6 +28,7 @@ struct BistroHUD: View {
     var onOpenShop: () -> Void
     var onSelectBlueprint: (FurnitureBlueprint?) -> Void
     var onAction: (BistroHUDAction) -> Void
+    var onPause: () -> Void
     @State private var showsUtilityButtons = false
 
     var body: some View {
@@ -72,6 +73,10 @@ struct BistroHUD: View {
                     Spacer(minLength: BistroCampTheme.Spacing.small)
 
                     BistroCampButton(title: L10n.string(L10n.HUD.open), systemImage: "storefront.fill", variant: .secondary, action: onOpenShop)
+                        .frame(width: 92)
+
+                    pauseButton
+                        .frame(width: 96)
                 }
             }
             .frame(maxWidth: 520)
@@ -81,7 +86,7 @@ struct BistroHUD: View {
     }
 
     private var activeTopBar: some View {
-        HStack(alignment: .top, spacing: 0) {
+        HStack(alignment: .top, spacing: BistroCampTheme.Spacing.small) {
             CampTicketView(
                 order: world.activeOrder,
                 served: world.servedCustomers,
@@ -89,8 +94,20 @@ struct BistroHUD: View {
                 lost: world.lostCustomers
             )
             .layoutPriority(1)
+
+            pauseButton
+                .frame(width: 96)
         }
         .frame(maxWidth: .infinity, alignment: .top)
+    }
+
+    private var pauseButton: some View {
+        BistroCampButton(
+            title: L10n.string(L10n.HUD.pause),
+            systemImage: "pause.fill",
+            variant: .neutral,
+            action: onPause
+        )
     }
 
     private var bottomBar: some View {

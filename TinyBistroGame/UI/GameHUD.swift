@@ -8,6 +8,7 @@ struct GameHUD: View {
     var onOpenShop: () -> Void
     var onSelectBlueprint: (FurnitureBlueprint?) -> Void
     var onAction: (BistroHUDAction) -> Void
+    var onPause: () -> Void
 
     var body: some View {
         BistroHUD(
@@ -17,7 +18,8 @@ struct GameHUD: View {
             onDeliver: onDeliver,
             onOpenShop: onOpenShop,
             onSelectBlueprint: onSelectBlueprint,
-            onAction: onAction
+            onAction: onAction,
+            onPause: onPause
         )
     }
 }

@@ -4,6 +4,7 @@ import Foundation
 @MainActor
 final class BistroGame: ObservableObject {
     @Published private(set) var world: BistroWorld
+    var isPaused = false
 
     private var lastTickDate: Date?
     private var selectedBlueprint: FurnitureBlueprint?
@@ -23,6 +24,10 @@ final class BistroGame: ObservableObject {
     }
 
     func tick(deltaTime: TimeInterval) {
+        guard !isPaused else {
+            return
+        }
+
         guard deltaTime > 0 else {
             if world.sessionState == .inProgress {
                 CustomerSystem.spawnCustomer(in: &world)
@@ -41,6 +46,10 @@ final class BistroGame: ObservableObject {
     }
 
     func handleTap(_ target: SceneTapTarget) {
+        guard !isPaused else {
+            return
+        }
+
         world.selectedTarget = target
 
         if let selectedBlueprint {
@@ -87,14 +96,26 @@ final class BistroGame: ObservableObject {
     }
 
     func startCooking() {
+        guard !isPaused else {
+            return
+        }
+
         CookingSystem.startCooking(world: &world)
     }
 
     func deliverOrder() {
+        guard !isPaused else {
+            return
+        }
+
         CookingSystem.deliverReadyOrder(world: &world)
     }
 
     func openShop() {
+        guard !isPaused else {
+            return
+        }
+
         guard world.sessionState != .inProgress else {
             return
         }
@@ -109,10 +130,18 @@ final class BistroGame: ObservableObject {
     }
 
     func showComingSoon(_ feature: String) {
+        guard !isPaused else {
+            return
+        }
+
         world.postEvent(L10n.format(L10n.Event.comingSoon, feature))
     }
 
     func selectBlueprint(_ blueprint: FurnitureBlueprint?) {
+        guard !isPaused else {
+            return
+        }
+
         selectedBlueprint = blueprint
 
         if let blueprint {

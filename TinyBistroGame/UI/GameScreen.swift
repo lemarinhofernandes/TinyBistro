@@ -1,12 +1,18 @@
 import SwiftUI
 
 struct GameScreen: View {
-    @StateObject private var game = BistroGame()
+    @ObservedObject var game: BistroGame
+    var isInputEnabled = true
+    var onPause: () -> Void
 
     var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
             ZStack {
                 BistroSceneView(world: game.world) { target in
+                    guard isInputEnabled else {
+                        return
+                    }
+
                     game.handleTap(target)
                 }
                 .ignoresSafeArea()
@@ -20,7 +26,8 @@ struct GameScreen: View {
                     onSelectBlueprint: game.selectBlueprint,
                     onAction: { action in
                         game.showComingSoon(action.title)
-                    }
+                    },
+                    onPause: onPause
                 )
             }
             .task(id: timeline.date) {

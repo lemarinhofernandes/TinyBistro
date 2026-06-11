@@ -13,6 +13,7 @@ enum L10n {
         static let tinyBistro = LocalizedStringResource("hud.tinyBistro", defaultValue: "Tiny Bistro")
         static let closed = LocalizedStringResource("hud.closed", defaultValue: "Closed")
         static let open = LocalizedStringResource("hud.open", defaultValue: "Open")
+        static let pause = LocalizedStringResource("hud.pause", defaultValue: "Pause")
         static let cook = LocalizedStringResource("hud.cook", defaultValue: "Cook")
         static let deliver = LocalizedStringResource("hud.deliver", defaultValue: "Deliver")
         static let buy = LocalizedStringResource("hud.buy", defaultValue: "Buy")
@@ -36,6 +37,25 @@ enum L10n {
         static let guestPrefix = LocalizedStringResource("hud.guestPrefix", defaultValue: "Guest %@")
         static let noTicketYet = LocalizedStringResource("hud.noTicketYet", defaultValue: "No ticket yet")
         static let waitingForNextOrder = LocalizedStringResource("hud.waitingForNextOrder", defaultValue: "Waiting for the next guest")
+    }
+
+    enum Menu {
+        static let title = LocalizedStringResource("menu.title", defaultValue: "Tiny Bistro")
+        static let subtitle = LocalizedStringResource("menu.subtitle", defaultValue: "Camp kitchen chaos")
+        static let newGame = LocalizedStringResource("menu.newGame", defaultValue: "New Game")
+        static let continueGame = LocalizedStringResource("menu.continue", defaultValue: "Continue")
+        static let settings = LocalizedStringResource("menu.settings", defaultValue: "Settings")
+        static let credits = LocalizedStringResource("menu.credits", defaultValue: "Credits")
+        static let resume = LocalizedStringResource("menu.resume", defaultValue: "Resume")
+        static let paused = LocalizedStringResource("menu.paused", defaultValue: "Paused")
+        static let quitToMenu = LocalizedStringResource("menu.quitToMenu", defaultValue: "Quit to Main Menu")
+        static let newGameConfirmTitle = LocalizedStringResource("menu.newGameConfirmTitle", defaultValue: "Start a new game?")
+        static let newGameConfirmMessage = LocalizedStringResource("menu.newGameConfirmMessage", defaultValue: "Current unsaved progress will be discarded.")
+        static let cancel = LocalizedStringResource("menu.cancel", defaultValue: "Cancel")
+        static let ok = LocalizedStringResource("menu.ok", defaultValue: "OK")
+        static let comingSoon = LocalizedStringResource("menu.comingSoon", defaultValue: "Coming soon")
+        static let settingsStub = LocalizedStringResource("menu.settingsStub", defaultValue: "Settings will arrive in a future build.")
+        static let creditsStub = LocalizedStringResource("menu.creditsStub", defaultValue: "Credits will arrive in a future build.")
     }
 
     enum Event {
