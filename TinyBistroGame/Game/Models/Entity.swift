@@ -1,8 +1,35 @@
 import Foundation
 
 enum EntityRole: Sendable {
+    case manager
     case staff
+    case chef
+    case waiter
     case customer
+
+    var isStaff: Bool {
+        switch self {
+        case .manager, .staff, .chef, .waiter:
+            return true
+        case .customer:
+            return false
+        }
+    }
+
+    var isManager: Bool {
+        switch self {
+        case .manager, .staff:
+            return true
+        case .chef, .waiter, .customer:
+            return false
+        }
+    }
+}
+
+enum StaffTaskKind: Hashable, Sendable {
+    case cooking(orderID: Order.ID)
+    case pickingUpDish(orderID: Order.ID, customerID: Entity.ID)
+    case delivering(orderID: Order.ID, customerID: Entity.ID)
 }
 
 /// State machine for the player/staff avatar.
@@ -11,7 +38,9 @@ enum EntityRole: Sendable {
 /// - `idle -> moving -> idle` when the player taps a walkable tile.
 /// - `idle -> cooking(orderID:)` when `startCooking` is called for an `Order.created`.
 /// - `cooking(orderID:) -> carryingDish(orderID:)` after `order.recipe.duration`.
-/// - `carryingDish(orderID:) -> delivering(orderID:customerID:)` when delivery starts.
+/// - `idle -> moving` when staff starts walking to pick up a ready dish.
+/// - `moving -> carryingDish(orderID:)` when staff reaches the stove/counter pickup point.
+/// - `carryingDish(orderID:) -> delivering(orderID:customerID:)` when staff reaches the customer.
 /// - `delivering(orderID:customerID:) -> idle` after the matching order is delivered.
 ///
 /// Invariants:
@@ -75,8 +104,16 @@ struct Entity: Identifiable, Hashable, Sendable {
     var name: String
     var role: EntityRole
     var position: GridPosition
+    /// Continuous tile-space position used for smooth motion.
+    var preciseXZ: SIMD2<Float>
+    /// Movement speed in tiles per second.
+    var speed: Double
     var destination: GridPosition?
+    var path: [GridPosition]
     var staffState: StaffState?
+    var taskKind: StaffTaskKind?
+    var taskRemaining: TimeInterval?
+    var taskDuration: TimeInterval?
     var customerState: CustomerState?
     var stateElapsedTime: TimeInterval
 
@@ -85,8 +122,14 @@ struct Entity: Identifiable, Hashable, Sendable {
         name: String,
         role: EntityRole,
         position: GridPosition,
+        preciseXZ: SIMD2<Float>? = nil,
+        speed: Double = 2.0,
         destination: GridPosition? = nil,
+        path: [GridPosition] = [],
         staffState: StaffState? = nil,
+        taskKind: StaffTaskKind? = nil,
+        taskRemaining: TimeInterval? = nil,
+        taskDuration: TimeInterval? = nil,
         customerState: CustomerState? = nil,
         stateElapsedTime: TimeInterval = 0
     ) {
@@ -94,9 +137,26 @@ struct Entity: Identifiable, Hashable, Sendable {
         self.name = name
         self.role = role
         self.position = position
+        self.preciseXZ = preciseXZ ?? position.precisePosition()
+        self.speed = speed
         self.destination = destination
+        self.path = path
         self.staffState = staffState
+        self.taskKind = taskKind
+        self.taskRemaining = taskRemaining
+        self.taskDuration = taskDuration
         self.customerState = customerState
         self.stateElapsedTime = stateElapsedTime
+    }
+
+    var taskProgress: Double? {
+        guard let taskRemaining,
+              let taskDuration,
+              taskDuration > 0
+        else {
+            return nil
+        }
+
+        return min(max(1 - taskRemaining / taskDuration, 0), 1)
     }
 }

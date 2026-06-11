@@ -42,7 +42,7 @@ struct BistroWorld: Sendable {
     var catalog: [FurnitureBlueprint]
 
     var staff: Entity? {
-        firstEntity(role: .staff)
+        entities.first { $0.role.isManager } ?? entities.first { $0.role.isStaff }
     }
 
     var activeCustomer: Entity? {
@@ -70,6 +70,10 @@ struct BistroWorld: Sendable {
         entities.firstIndex { $0.role == role }
     }
 
+    func firstEntityIndex(where predicate: (Entity) -> Bool) -> Int? {
+        entities.firstIndex(where: predicate)
+    }
+
     func furniture(id: FurnitureID) -> Furniture? {
         furniture.first { $0.id == id }
     }
@@ -84,6 +88,10 @@ struct BistroWorld: Sendable {
 
     func firstFurnitureIndex(of kind: FurnitureKind) -> Int? {
         furniture.firstIndex { $0.kind == kind }
+    }
+
+    func firstFurnitureIndex(of kind: FurnitureKind, where predicate: (Furniture) -> Bool) -> Int? {
+        furniture.firstIndex { $0.kind == kind && predicate($0) }
     }
 
     func firstFurniture(occupiedBy entityID: EntityID) -> Furniture? {
@@ -109,6 +117,112 @@ struct BistroWorld: Sendable {
         }
     }
 
+    func orderIsAssignedToStaff(_ orderID: OrderID) -> Bool {
+        entities.contains { entity in
+            switch entity.taskKind {
+            case .cooking(let assignedOrderID),
+                 .pickingUpDish(let assignedOrderID, _),
+                 .delivering(let assignedOrderID, _):
+                return assignedOrderID == orderID
+            case nil:
+                return false
+            }
+        }
+    }
+
+    func firstFreeChair() -> Furniture? {
+        firstFurniture(of: .chair, where: { $0.occupiedBy == nil })
+    }
+
+    func nearestTable(to chair: Furniture) -> Furniture? {
+        furniture
+            .filter(\.isTable)
+            .min(by: { lhs, rhs in
+                distanceSquared(from: chair.position, to: lhs.position) <
+                distanceSquared(from: chair.position, to: rhs.position)
+            })
+    }
+
+    func entranceFurniture() -> Furniture? {
+        firstFurniture(of: .entrance)
+    }
+
+    func firstAvailableChefIndex() -> Int? {
+        firstEntityIndex {
+            $0.role == .chef &&
+            $0.taskKind == nil &&
+            $0.destination == nil &&
+            ($0.staffState == nil || $0.staffState == .idle)
+        }
+    }
+
+    func firstAvailableManagerIndex() -> Int? {
+        firstEntityIndex {
+            $0.role.isManager &&
+            $0.taskKind == nil &&
+            $0.destination == nil &&
+            ($0.staffState == nil || $0.staffState == .idle)
+        }
+    }
+
+    func firstAvailableWaiterIndex() -> Int? {
+        firstEntityIndex {
+            $0.role == .waiter &&
+            $0.taskKind == nil &&
+            $0.destination == nil &&
+            ($0.staffState == nil || $0.staffState == .idle)
+        }
+    }
+
+    func canStartCooking() -> Bool {
+        firstOrder(status: .created) != nil && firstAvailableManagerIndex() != nil
+    }
+
+    func canDeliverReadyOrder(customerID: EntityID? = nil) -> Bool {
+        firstAvailableManagerIndex() != nil &&
+        orders.contains { order in
+            order.status == .ready &&
+            !orderIsAssignedToStaff(order.id) &&
+            (customerID == nil || order.customerID == customerID)
+        }
+    }
+
+    func canAutoStartCooking() -> Bool {
+        firstOrder(status: .created) != nil && firstAvailableChefIndex() != nil
+    }
+
+    func canAutoDeliverReadyOrder(customerID: EntityID? = nil) -> Bool {
+        firstAvailableWaiterIndex() != nil &&
+        orders.contains { order in
+            order.status == .ready &&
+            !orderIsAssignedToStaff(order.id) &&
+            (customerID == nil || order.customerID == customerID)
+        }
+    }
+
+    func deliveryPickupFurniture() -> Furniture? {
+        firstFurniture(of: .counter) ?? firstFurniture(of: .stove)
+    }
+
+    func actionPosition(near furniture: Furniture, from origin: GridPosition, ignoring entityID: EntityID? = nil) -> GridPosition? {
+        furniture.position
+            .neighbors(includeDiagonals: true)
+            .filter { isWalkable($0, ignoring: entityID) }
+            .min { lhs, rhs in
+                distanceSquared(from: origin, to: lhs) < distanceSquared(from: origin, to: rhs)
+            }
+    }
+
+    func actionPosition(for customer: Entity, ignoring entityID: EntityID? = nil) -> GridPosition {
+        guard let chair = firstFurniture(of: .chair, where: { $0.occupiedBy == customer.id }),
+              let table = nearestTable(to: chair)
+        else {
+            return customer.position
+        }
+
+        return actionPosition(near: table, from: customer.position, ignoring: entityID) ?? customer.position
+    }
+
     func isWalkable(
         _ position: GridPosition,
         ignoring entityID: EntityID? = nil,
@@ -124,13 +238,16 @@ struct BistroWorld: Sendable {
             return false
         }
 
-        if entities.contains(where: { entity in
-            entity.id != entityID && entity.position == position
-        }) {
-            return false
-        }
-
         return true
+    }
+
+    func isWalkable(
+        _ precisePosition: SIMD2<Float>,
+        ignoring entityID: EntityID? = nil,
+        allowsChair: Bool = false
+    ) -> Bool {
+        let position = GridPosition.from(precisePosition: precisePosition)
+        return isWalkable(position, ignoring: entityID, allowsChair: allowsChair)
     }
 
     func canPlaceFurniture(at position: GridPosition) -> Bool {
@@ -138,9 +255,7 @@ struct BistroWorld: Sendable {
             return false
         }
 
-        let hasFurniture = furniture.contains { $0.position == position }
-        let hasEntity = entities.contains { $0.position == position }
-        return !hasFurniture && !hasEntity
+        return !furniture.contains { $0.position == position }
     }
 
     mutating func placeFurniture(_ blueprint: FurnitureBlueprint, at position: GridPosition) -> Bool {
@@ -159,16 +274,31 @@ struct BistroWorld: Sendable {
         let chair = Furniture(kind: .chair, position: GridPosition(column: 5, row: 4))
         let stove = Furniture(kind: .stove, position: GridPosition(column: 2, row: 1))
         let counter = Furniture(kind: .counter, position: GridPosition(column: 3, row: 1))
-        let staff = Entity(
-            name: "Mia",
-            role: .staff,
-            position: GridPosition(column: 3, row: 5),
+        let manager = Entity(
+            name: "Duda Manager",
+            role: .manager,
+            position: GridPosition(column: 2, row: 3),
+            speed: 2.35,
+            staffState: .idle
+        )
+        let chef = Entity(
+            name: "Mia Chef",
+            role: .chef,
+            position: GridPosition(column: 1, row: 1),
+            speed: 2.55,
+            staffState: .idle
+        )
+        let waiter = Entity(
+            name: "Leo Waiter",
+            role: .waiter,
+            position: GridPosition(column: 4, row: 1),
+            speed: 2.75,
             staffState: .idle
         )
 
         return BistroWorld(
             gridSize: GridSize(columns: 8, rows: 7),
-            entities: [staff],
+            entities: [manager, chef, waiter],
             furniture: [entrance, table, chair, stove, counter],
             orders: [],
             selectedTarget: nil,
@@ -196,4 +326,10 @@ private extension Furniture {
             return false
         }
     }
+}
+
+private func distanceSquared(from lhs: GridPosition, to rhs: GridPosition) -> Int {
+    let dx = lhs.column - rhs.column
+    let dy = lhs.row - rhs.row
+    return dx * dx + dy * dy
 }

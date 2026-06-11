@@ -20,6 +20,30 @@ enum NodeFactory {
         static let timeoutHaloColor = UIColor(red: 1, green: 0.08, blue: 0.02, alpha: 0.30)
         static let timeoutShadowColor = UIColor(red: 1, green: 0, blue: 0, alpha: 0.85)
         static let timeoutPenaltyColor = UIColor(red: 1, green: 0.02, blue: 0.02, alpha: 1)
+
+        static let happyEffectNodeName = "customer-happy-effect"
+        static let happyEffectY: Float = 1.35
+        static let happyEffectInitialScale: Float = 0.2
+        static let happyPlaneWidth: CGFloat = 0.95
+        static let happyPlaneHeight: CGFloat = 0.44
+        static let happyImageSize = CGSize(width: 220, height: 104)
+        static let happyHaloRect = CGRect(x: 28, y: 10, width: 164, height: 84)
+        static let happyEmojiFrame = CGRect(x: 24, y: 16, width: 76, height: 72)
+        static let happyBonusFrame = CGRect(x: 94, y: 10, width: 102, height: 82)
+        static let happyEmojiFontSize: CGFloat = 58
+        static let happyBonusFontSize: CGFloat = 60
+        static let happyBonusStrokeWidth: CGFloat = -4
+        static let happyGreen = UIColor(red: 0.15, green: 0.68, blue: 0.38, alpha: 1)
+        static let happyHaloColor = UIColor(red: 0.15, green: 0.68, blue: 0.38, alpha: 0.34)
+        static let happyShadowColor = UIColor(red: 0.03, green: 0.62, blue: 0.25, alpha: 0.88)
+
+        static let staffClockNodeName = "staff-clock"
+        static let staffClockY: Float = 1.45
+        static let staffClockPlaneSize: CGFloat = 0.46
+        static let staffClockImageSize = CGSize(width: 128, height: 128)
+        static let staffClockLineWidth: CGFloat = 8
+        static let staffClockHandWidth: CGFloat = 9
+        static let staffClockMarkLength: CGFloat = 15
     }
 
     static func tileNode(position: GridPosition, isDark: Bool, world: BistroWorld) -> SCNNode {
@@ -97,10 +121,10 @@ enum NodeFactory {
     static func entityNode(_ entity: Entity, world: BistroWorld) -> SCNNode {
         let root = SCNNode()
         root.name = SceneNodeName.entity(entity.id)
-        root.position = SceneCoordinates.worldPosition(for: entity.position, in: world, y: 0.12)
+        root.position = SceneCoordinates.worldPosition(for: entity, in: world, y: 0.12)
 
         let body = SCNCapsule(capRadius: 0.20, height: 0.78)
-        body.materials = [entity.role == .staff ? BistroMaterials.staff : BistroMaterials.customer]
+        body.materials = [entityMaterial(for: entity.role)]
         let bodyNode = SCNNode(geometry: body)
         bodyNode.position.y = 0.46
         root.addChildNode(bodyNode)
@@ -112,6 +136,17 @@ enum NodeFactory {
         root.addChildNode(markerNode)
 
         return root
+    }
+
+    private static func entityMaterial(for role: EntityRole) -> SCNMaterial {
+        switch role {
+        case .manager:
+            return BistroMaterials.manager
+        case .staff, .chef, .waiter:
+            return BistroMaterials.staff
+        case .customer:
+            return BistroMaterials.customer
+        }
     }
 
     static func selectionNode(position: GridPosition, world: BistroWorld) -> SCNNode {
@@ -140,6 +175,37 @@ enum NodeFactory {
             Constants.timeoutEffectInitialScale
         )
         return root
+    }
+
+    static func happyEffectNode() -> SCNNode {
+        let root = SceneBillboardFactory.billboardNode(
+            name: Constants.happyEffectNodeName,
+            width: Constants.happyPlaneWidth,
+            height: Constants.happyPlaneHeight,
+            y: Constants.happyEffectY,
+            image: happyEffectImage()
+        )
+
+        root.scale = SCNVector3(
+            Constants.happyEffectInitialScale,
+            Constants.happyEffectInitialScale,
+            Constants.happyEffectInitialScale
+        )
+        return root
+    }
+
+    static func staffClockNode(progress: Double) -> SCNNode {
+        SceneBillboardFactory.billboardNode(
+            name: Constants.staffClockNodeName,
+            width: Constants.staffClockPlaneSize,
+            height: Constants.staffClockPlaneSize,
+            y: Constants.staffClockY,
+            image: staffClockImage(progress: progress)
+        )
+    }
+
+    static func staffClockMaterial(progress: Double) -> SCNMaterial {
+        SceneBillboardFactory.imageMaterial(staffClockImage(progress: progress))
     }
 
     private static func timeoutEffectImage() -> UIImage {
@@ -181,6 +247,120 @@ enum NodeFactory {
                 withAttributes: penaltyAttributes
             )
         }
+    }
+
+    private static func happyEffectImage() -> UIImage {
+        SceneBillboardFactory.renderImage(size: Constants.happyImageSize) { cgContext in
+            cgContext.setShadow(
+                offset: .zero,
+                blur: Constants.timeoutShadowBlur,
+                color: Constants.happyShadowColor.cgColor
+            )
+
+            let haloPath = UIBezierPath(ovalIn: Constants.happyHaloRect)
+            Constants.happyHaloColor.setFill()
+            haloPath.fill()
+
+            cgContext.setShadow(
+                offset: .zero,
+                blur: Constants.timeoutTextShadowBlur,
+                color: UIColor.black.withAlphaComponent(0.65).cgColor
+            )
+
+            let emojiAttributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: Constants.happyEmojiFontSize),
+                .paragraphStyle: centeredParagraphStyle
+            ]
+            ("😀" as NSString).draw(
+                in: Constants.happyEmojiFrame,
+                withAttributes: emojiAttributes
+            )
+
+            let bonusAttributes: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: Constants.happyBonusFontSize, weight: .black),
+                .foregroundColor: Constants.happyGreen,
+                .strokeColor: UIColor.white,
+                .strokeWidth: Constants.happyBonusStrokeWidth,
+                .paragraphStyle: centeredParagraphStyle
+            ]
+            ("++" as NSString).draw(
+                in: Constants.happyBonusFrame,
+                withAttributes: bonusAttributes
+            )
+        }
+    }
+
+    private static func staffClockImage(progress: Double) -> UIImage {
+        let clampedProgress = GeometryUtils.clamp(progress, min: 0, max: 1)
+        return SceneBillboardFactory.renderImage(size: Constants.staffClockImageSize) { cgContext in
+            let size = Constants.staffClockImageSize
+            let center = CGPoint(x: size.width / 2, y: size.height / 2)
+            let radius: CGFloat = 48
+            let clockRect = CGRect(
+                x: center.x - radius,
+                y: center.y - radius,
+                width: radius * 2,
+                height: radius * 2
+            )
+
+            cgContext.setShadow(offset: .zero, blur: 10, color: UIColor.black.withAlphaComponent(0.62).cgColor)
+            UIColor(red: 0.96, green: 0.87, blue: 0.72, alpha: 0.96).setFill()
+            UIBezierPath(ovalIn: clockRect).fill()
+
+            UIColor.white.setStroke()
+            let outline = UIBezierPath(ovalIn: clockRect)
+            outline.lineWidth = Constants.staffClockLineWidth
+            outline.stroke()
+
+            UIColor(red: 0.18, green: 0.22, blue: 0.25, alpha: 0.96).setStroke()
+            let inner = UIBezierPath(ovalIn: clockRect.insetBy(dx: 6, dy: 6))
+            inner.lineWidth = 3
+            inner.stroke()
+
+            drawClockMarks(center: center, radius: radius - 11)
+            drawClockHand(center: center, radius: radius - 18, progress: clampedProgress)
+        }
+    }
+
+    private static func drawClockMarks(center: CGPoint, radius: CGFloat) {
+        UIColor(red: 0.86, green: 0.20, blue: 0.17, alpha: 1).setStroke()
+        for index in 0..<4 {
+            let angle = CGFloat(index) * .pi / 2 - .pi / 2
+            let outer = CGPoint(
+                x: center.x + cos(angle) * radius,
+                y: center.y + sin(angle) * radius
+            )
+            let inner = CGPoint(
+                x: center.x + cos(angle) * (radius - Constants.staffClockMarkLength),
+                y: center.y + sin(angle) * (radius - Constants.staffClockMarkLength)
+            )
+
+            let mark = UIBezierPath()
+            mark.move(to: inner)
+            mark.addLine(to: outer)
+            mark.lineWidth = 6
+            mark.lineCapStyle = .round
+            mark.stroke()
+        }
+    }
+
+    private static func drawClockHand(center: CGPoint, radius: CGFloat, progress: Double) {
+        let angle = CGFloat(progress * 2 * .pi) - .pi / 2
+        let end = CGPoint(
+            x: center.x + cos(angle) * radius,
+            y: center.y + sin(angle) * radius
+        )
+
+        UIColor(red: 0.12, green: 0.39, blue: 0.75, alpha: 1).setStroke()
+        let hand = UIBezierPath()
+        hand.move(to: center)
+        hand.addLine(to: end)
+        hand.lineWidth = Constants.staffClockHandWidth
+        hand.lineCapStyle = .round
+        hand.stroke()
+
+        Constants.happyGreen.setFill()
+        UIBezierPath(ovalIn: CGRect(x: center.x - 7, y: center.y - 7, width: 14, height: 14)).fill()
     }
 
     private static var centeredParagraphStyle: NSParagraphStyle {

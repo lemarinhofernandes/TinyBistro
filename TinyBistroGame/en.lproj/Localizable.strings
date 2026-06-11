@@ -28,6 +28,9 @@
 "event.shopOpened" = "Shop open! First guest is on the way.";
 "event.noWaitingOrder" = "No order is waiting yet.";
 "event.noReadyDish" = "No ready dish to deliver.";
+"event.noAvailableChef" = "Chef is busy.";
+"event.noAvailableWaiter" = "Waiter is busy.";
+"event.noAvailableManager" = "Manager is busy.";
 "event.tileBlocked" = "Tile blocked.";
 "event.placementCancelled" = "Placement cancelled.";
 "event.placementPrompt" = "Tap an empty tile to place %@.";
@@ -35,7 +38,7 @@
 "event.cannotPlace" = "Can't place %@ there.";
 "event.goalReached" = "Goal reached! Served %d.";
 "event.placedFurniture" = "Placed %@.";
-"event.comingSoon" = "%@: em breve.";
+"event.comingSoon" = "Coming soon: %@.";
 "event.selectedFurniture" = "Selected %@.";
 "event.staffState" = "%@ is %@.";
 "event.staffMoved" = "%@ moved to tile %d, %d.";
@@ -43,8 +46,13 @@
 "event.customerSatDown" = "%@ sat down.";
 "event.customerChoosingRecipe" = "%@ is choosing a recipe.";
 "event.customerOrdered" = "%@ ordered %@. Tap the stove.";
+"event.chefHeadingToStove" = "%@ is heading to the stove.";
 "event.cooking" = "Cooking %@...";
 "event.dishReady" = "%@ is ready. Tap the customer.";
+"event.staffHeadingToPickup" = "%@ is heading to pick up %@.";
+"event.staffPickedUpDish" = "%@ picked up %@.";
+"event.waiterDelivering" = "%@ is delivering %@.";
+"event.managerActionCancelled" = "%@ cancelled the current action.";
 "event.guestLeavingHappy" = "%@ is leaving happy.";
 "event.customerEating" = "%@ is eating %@.";
 "event.guestLeftUnhappy" = "%@ left unhappy.";

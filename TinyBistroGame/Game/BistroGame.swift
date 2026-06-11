@@ -23,12 +23,16 @@ final class BistroGame: ObservableObject {
     }
 
     func tick(deltaTime: TimeInterval) {
-        guard world.sessionState == .inProgress else {
+        guard deltaTime > 0 else {
+            if world.sessionState == .inProgress {
+                CustomerSystem.spawnCustomer(in: &world)
+            }
             return
         }
 
-        guard deltaTime > 0 else {
-            CustomerSystem.spawnCustomer(in: &world)
+        advanceStaffMovement(deltaTime: deltaTime)
+
+        guard world.sessionState == .inProgress else {
             return
         }
 
@@ -91,7 +95,7 @@ final class BistroGame: ObservableObject {
     }
 
     func openShop() {
-        guard world.sessionState == .closed else {
+        guard world.sessionState != .inProgress else {
             return
         }
 
@@ -99,6 +103,7 @@ final class BistroGame: ObservableObject {
         world.servedCustomers = 0
         world.lostCustomers = 0
         world.orders.removeAll()
+        world.entities.removeAll { $0.role == .customer }
         world.postEvent(L10n.string(L10n.Event.shopOpened))
         CustomerSystem.spawnCustomer(in: &world)
     }
@@ -118,7 +123,9 @@ final class BistroGame: ObservableObject {
     }
 
     private func moveStaff(to position: GridPosition) {
-        guard let staffIndex = world.firstEntityIndex(role: .staff) else {
+        guard let staffIndex = world.firstEntityIndex(where: {
+            $0.role.isManager
+        }) else {
             return
         }
 
@@ -127,8 +134,43 @@ final class BistroGame: ObservableObject {
             return
         }
 
-        world.entities[staffIndex].position = position
-        world.postEvent(L10n.format(L10n.Event.staffMoved, world.entities[staffIndex].name, position.column, position.row))
+        if world.entities[staffIndex].taskKind != nil {
+            CookingSystem.cancelManagerTask(world: &world)
+        }
+
+        guard let managerIndex = world.firstEntityIndex(where: { $0.role.isManager }) else {
+            return
+        }
+
+        if world.entities[managerIndex].position == position {
+            world.entities[managerIndex].destination = nil
+            world.entities[managerIndex].path.removeAll()
+            world.entities[managerIndex].staffState = .idle
+            return
+        }
+
+        world.entities[managerIndex].destination = position
+        world.entities[managerIndex].path.removeAll()
+        world.entities[managerIndex].staffState = .moving
+        world.entities[managerIndex].stateElapsedTime = 0
+        world.postEvent(L10n.format(L10n.Event.staffMoved, world.entities[managerIndex].name, position.column, position.row))
+    }
+
+    private func advanceStaffMovement(deltaTime: TimeInterval) {
+        guard let staffIndex = world.firstEntityIndex(where: {
+            $0.role.isManager && $0.taskKind == nil && $0.destination != nil
+        })
+        else {
+            return
+        }
+
+        var staff = world.entities[staffIndex]
+        let arrived = MovementSystem.advance(entity: &staff, world: world, deltaTime: deltaTime)
+        world.entities[staffIndex] = staff
+
+        if arrived || staff.destination == nil {
+            world.entities[staffIndex].staffState = .idle
+        }
     }
 
     private func handlePlacementTap(_ target: SceneTapTarget, blueprint: FurnitureBlueprint) {

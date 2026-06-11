@@ -4,6 +4,17 @@ struct GridPosition: Hashable, Sendable {
     var column: Int
     var row: Int
 
+    func precisePosition() -> SIMD2<Float> {
+        SIMD2<Float>(Float(column), Float(row))
+    }
+
+    static func from(precisePosition: SIMD2<Float>) -> GridPosition {
+        GridPosition(
+            column: Int(precisePosition.x.rounded()),
+            row: Int(precisePosition.y.rounded())
+        )
+    }
+
     /// Moves one tile toward the destination using the current routing policy.
     ///
     /// The current policy prefers resolving horizontal distance first, then
@@ -21,13 +32,24 @@ struct GridPosition: Hashable, Sendable {
         return self
     }
 
-    func neighbors() -> [GridPosition] {
-        [
+    func neighbors(includeDiagonals: Bool = false) -> [GridPosition] {
+        var positions = [
             GridPosition(column: column + 1, row: row),
             GridPosition(column: column - 1, row: row),
             GridPosition(column: column, row: row + 1),
             GridPosition(column: column, row: row - 1)
         ]
+
+        if includeDiagonals {
+            positions.append(contentsOf: [
+                GridPosition(column: column + 1, row: row + 1),
+                GridPosition(column: column + 1, row: row - 1),
+                GridPosition(column: column - 1, row: row + 1),
+                GridPosition(column: column - 1, row: row - 1)
+            ])
+        }
+
+        return positions
     }
 }
 

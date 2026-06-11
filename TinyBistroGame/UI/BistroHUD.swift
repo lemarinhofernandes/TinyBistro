@@ -46,10 +46,10 @@ struct BistroHUD: View {
 
     @ViewBuilder
     private var topBar: some View {
-        if world.sessionState == .closed {
-            closedTopBar
-        } else {
+        if world.sessionState == .inProgress {
             activeTopBar
+        } else {
+            closedTopBar
         }
     }
 
@@ -107,20 +107,16 @@ struct BistroHUD: View {
     private var actionDock: some View {
         CampPanel(tint: BistroCampTheme.Colors.graphite.opacity(0.92), cornerRadius: BistroCampTheme.Radius.large) {
             VStack(alignment: .leading, spacing: BistroCampTheme.Spacing.small) {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: BistroCampTheme.Spacing.small) {
-                        contextualButtons
-                        utilityToggleButtons
-                    }
-                    .padding(.horizontal, 2)
+                HStack(spacing: BistroCampTheme.Spacing.small) {
+                    contextualButtons
+                    utilityToggleButtons
                 }
+                .padding(.horizontal, 2)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 if showsUtilityButtons {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        featureButtons
-                            .padding(.horizontal, 2)
-                    }
+                    featureButtons
+                        .padding(.horizontal, 2)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
@@ -130,12 +126,12 @@ struct BistroHUD: View {
     }
 
     private var contextualButtons: some View {
-        HStack(spacing: BistroCampTheme.Spacing.small) {
+        Group {
             BistroCampButton(
                 title: L10n.string(L10n.HUD.cook),
                 systemImage: "flame.fill",
                 variant: .primary,
-                isEnabled: world.activeOrder?.status == .created,
+                isEnabled: world.canStartCooking(),
                 action: onStartCooking
             )
 
@@ -143,38 +139,14 @@ struct BistroHUD: View {
                 title: L10n.string(L10n.HUD.deliver),
                 systemImage: "takeoutbag.and.cup.and.straw.fill",
                 variant: .secondary,
-                isEnabled: world.activeOrder?.status == .ready,
+                isEnabled: world.canDeliverReadyOrder(),
                 action: onDeliver
             )
         }
     }
 
     private var featureButtons: some View {
-        VStack(alignment: .trailing, spacing: BistroCampTheme.Spacing.small) {
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: BistroCampTheme.Spacing.small) {
-                    managementButtons
-                }
-
-                VStack(alignment: .trailing, spacing: BistroCampTheme.Spacing.small) {
-                    managementButtons
-                }
-            }
-
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: BistroCampTheme.Spacing.small) {
-                    catalogButtons
-                }
-
-                VStack(alignment: .trailing, spacing: BistroCampTheme.Spacing.small) {
-                    catalogButtons
-                }
-            }
-        }
-    }
-
-    private var managementButtons: some View {
-        Group {
+        LazyVGrid(columns: featureGridColumns, alignment: .leading, spacing: BistroCampTheme.Spacing.small) {
             BistroCampButton(title: L10n.string(L10n.HUD.buy), systemImage: "cart.fill", variant: .primary) {
                 onAction(.buy)
             }
@@ -187,24 +159,28 @@ struct BistroHUD: View {
             BistroCampButton(title: L10n.string(L10n.HUD.decor), systemImage: "chair.lounge.fill", variant: .destructive) {
                 onAction(.furniture)
             }
+
+            ForEach(world.catalog) { blueprint in
+                catalogButton(for: blueprint)
+            }
         }
+        .frame(maxWidth: .infinity)
     }
 
-    private var catalogButtons: some View {
-        ForEach(world.catalog) { blueprint in
-            catalogButton(for: blueprint)
-        }
+    private var featureGridColumns: [GridItem] {
+        Array(
+            repeating: GridItem(.flexible(minimum: 86), spacing: BistroCampTheme.Spacing.small),
+            count: 3
+        )
     }
 
     private var utilityToggleButtons: some View {
-        HStack(spacing: BistroCampTheme.Spacing.small) {
-            BistroCampButton(
-                title: showsUtilityButtons ? L10n.string(L10n.HUD.back) : L10n.string(L10n.HUD.more),
-                systemImage: showsUtilityButtons ? "arrow.uturn.left" : "square.grid.2x2.fill",
-                variant: .neutral
-            ) {
-                showsUtilityButtons.toggle()
-            }
+        BistroCampButton(
+            title: showsUtilityButtons ? L10n.string(L10n.HUD.back) : L10n.string(L10n.HUD.more),
+            systemImage: showsUtilityButtons ? "arrow.uturn.left" : "square.grid.2x2.fill",
+            variant: .neutral
+        ) {
+            showsUtilityButtons.toggle()
         }
     }
 

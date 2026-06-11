@@ -5,6 +5,7 @@ enum BistroMaterials {
     static let floorLight = material(hex: 0xFFF3D9, roughness: 0.82, emission: 0xFFF3D9, emissionIntensity: 0.04)
     static let floorDark = material(hex: 0xF59E42, roughness: 0.72, metalness: 0.05, emission: 0xF59E42, emissionIntensity: 0.04)
     static let wall = material(hex: 0xFFF3D9, roughness: 0.72, emission: 0xFFF3D9, emissionIntensity: 0.1)
+    static let manager = material(hex: 0x8E44EC, roughness: 0.36, metalness: 0.2, emission: 0x8E44EC, emissionIntensity: 0.11)
     static let staff = material(hex: 0x2E86DE, roughness: 0.42, metalness: 0.18, emission: 0x2E86DE, emissionIntensity: 0.06)
     static let customer = material(hex: 0xE24A3B, roughness: 0.48, metalness: 0.08, emission: 0xE24A3B, emissionIntensity: 0.05)
     static let marker = material(hex: 0xFFE66D, roughness: 0.28, metalness: 0.34, emission: 0xFFE66D, emissionIntensity: 0.32)

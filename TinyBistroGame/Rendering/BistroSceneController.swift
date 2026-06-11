@@ -2,7 +2,7 @@ import SceneKit
 
 final class BistroSceneController {
     private struct Constants {
-        static let entityMoveAnimationDuration = 0.22
+        static let entityMoveAnimationDuration = 0.14
         static let cameraPanSensitivity: CGFloat = 1.15
         static let cameraPanMargin: CGFloat = 5
         static let minOrthographicScale: Double = 5.6
@@ -16,6 +16,15 @@ final class BistroSceneController {
         static let timeoutRiseDuration = 1.85
         static let timeoutFadeDelay = 1.05
         static let timeoutFadeDuration = 0.8
+        static let happyPopScale: CGFloat = 1.18
+        static let happyPopDuration = 0.14
+        static let happySettleScale: CGFloat = 1.0
+        static let happySettleDuration = 0.10
+        static let happyRiseDistance: CGFloat = 0.72
+        static let happyRiseDuration = 0.95
+        static let happyFadeDelay = 0.28
+        static let happyFadeDuration = 0.55
+        static let staffClockNodeName = "staff-clock"
     }
 
     let scene: SCNScene
@@ -41,6 +50,8 @@ final class BistroSceneController {
         syncFurniture(world: world)
         syncEntities(world: world, animated: animated)
         syncTimeoutEffects(previousWorld: previousWorld, world: world)
+        syncHappyEffects(previousWorld: previousWorld, world: world)
+        syncStaffClocks(world: world)
         effectsController.sync(world: world, furnitureNodes: furnitureNodes, entityNodes: entityNodes)
         syncSelection(world: world)
     }
@@ -118,7 +129,7 @@ final class BistroSceneController {
         }
 
         for entity in world.entities {
-            let targetPosition = SceneCoordinates.worldPosition(for: entity.position, in: world, y: 0.12)
+            let targetPosition = SceneCoordinates.worldPosition(for: entity, in: world, y: 0.12)
 
             if let node = entityNodes[entity.id] {
                 if animated {
@@ -172,6 +183,75 @@ final class BistroSceneController {
         fade.timingMode = .easeIn
 
         effectNode.runAction(.sequence([pop, settle, hold, fade, .removeFromParentNode()]))
+    }
+
+    private func syncHappyEffects(previousWorld: BistroWorld, world: BistroWorld) {
+        let previousEatingCustomerIDs = Set(
+            previousWorld.entities
+                .filter { $0.role == .customer && $0.customerState == .eating }
+                .map(\.id)
+        )
+
+        guard let customer = world.entities.first(where: { entity in
+            entity.role == .customer &&
+            entity.customerState == .leaving &&
+            previousEatingCustomerIDs.contains(entity.id)
+        }),
+        let node = entityNodes[customer.id]
+        else {
+            return
+        }
+
+        let effectNode = NodeFactory.happyEffectNode()
+        node.addChildNode(effectNode)
+
+        let pop = SCNAction.scale(to: Constants.happyPopScale, duration: Constants.happyPopDuration)
+        pop.timingMode = .easeOut
+
+        let settle = SCNAction.scale(to: Constants.happySettleScale, duration: Constants.happySettleDuration)
+        settle.timingMode = .easeInEaseOut
+
+        let rise = SCNAction.moveBy(
+            x: 0,
+            y: Constants.happyRiseDistance,
+            z: 0,
+            duration: Constants.happyRiseDuration
+        )
+        rise.timingMode = .easeOut
+
+        let fade = SCNAction.sequence([
+            .wait(duration: Constants.happyFadeDelay),
+            .fadeOut(duration: Constants.happyFadeDuration)
+        ])
+
+        effectNode.runAction(.sequence([pop, settle, .group([rise, fade]), .removeFromParentNode()]))
+    }
+
+    private func syncStaffClocks(world: BistroWorld) {
+        let busyStaffIDs = Set(
+            world.entities
+                .filter { $0.role.isStaff && $0.taskProgress != nil }
+                .map(\.id)
+        )
+
+        for (id, node) in entityNodes where !busyStaffIDs.contains(id) {
+            node.childNode(withName: Constants.staffClockNodeName, recursively: false)?.removeFromParentNode()
+        }
+
+        for entity in world.entities where entity.role.isStaff {
+            guard let progress = entity.taskProgress,
+                  let entityNode = entityNodes[entity.id]
+            else {
+                continue
+            }
+
+            if let clockNode = entityNode.childNode(withName: Constants.staffClockNodeName, recursively: false),
+               let plane = clockNode.geometry as? SCNPlane {
+                plane.materials = [NodeFactory.staffClockMaterial(progress: progress)]
+            } else {
+                entityNode.addChildNode(NodeFactory.staffClockNode(progress: progress))
+            }
+        }
     }
 
     private func timedOutCustomer(previousWorld: BistroWorld, world: BistroWorld) -> Entity? {

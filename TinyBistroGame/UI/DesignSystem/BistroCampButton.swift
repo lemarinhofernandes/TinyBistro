@@ -43,9 +43,10 @@ struct BistroCampButton: View {
                     outlineWidth: 0.8
                 )
             }
-            .frame(minWidth: 70, minHeight: 50)
+            .frame(maxWidth: .infinity, minHeight: 50)
             .padding(.horizontal, 5)
         }
+        .frame(maxWidth: .infinity)
         .buttonStyle(CampButtonStyle(color: variant.color, isEnabled: isEnabled))
         .disabled(!isEnabled)
     }

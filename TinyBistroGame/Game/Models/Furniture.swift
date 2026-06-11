@@ -25,9 +25,33 @@ struct Furniture: Identifiable, Hashable, Sendable {
         self.position = position
         self.occupiedBy = occupiedBy
     }
+
+    var isSeat: Bool {
+        kind.isSeat
+    }
+
+    var isTable: Bool {
+        kind.isTable
+    }
+
+    var isStove: Bool {
+        kind.isStove
+    }
 }
 
 extension FurnitureKind {
+    var isSeat: Bool {
+        self == .chair
+    }
+
+    var isTable: Bool {
+        self == .table
+    }
+
+    var isStove: Bool {
+        self == .stove
+    }
+
     var displayName: String {
         switch self {
         case .entrance:

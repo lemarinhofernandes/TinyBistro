@@ -2,19 +2,17 @@ import Foundation
 
 enum CustomerSystem {
     private struct Constants {
-        static let movementStepDuration: TimeInterval = 0.55
+        static let customerSpeed = 1.35
         static let seatedPauseDuration: TimeInterval = 0.75
         static let orderingDuration: TimeInterval = 1.0
         static let eatingDuration: TimeInterval = 2.0
     }
 
-    static let movementStepDuration = Constants.movementStepDuration
-
     static func spawnCustomer(in world: inout BistroWorld) {
         guard world.sessionState == .inProgress,
               world.activeCustomer == nil,
-              let entrance = world.firstFurniture(of: .entrance),
-              let chair = world.firstFurniture(of: .chair, where: { $0.occupiedBy == nil })
+              let entrance = world.entranceFurniture(),
+              let chair = world.firstFreeChair()
         else {
             return
         }
@@ -23,6 +21,7 @@ enum CustomerSystem {
             name: "Guest \(world.nextCustomerNumber)",
             role: .customer,
             position: entrance.position,
+            speed: Constants.customerSpeed,
             destination: chair.position,
             customerState: .entering
         )
@@ -40,13 +39,13 @@ enum CustomerSystem {
             return
         }
 
-        world.entities[index].stateElapsedTime += deltaTime
-
-        if world.entities[index].stateElapsedTime >= movementStepDuration,
-           world.entities[index].destination != nil {
-            world.entities[index].stateElapsedTime = 0
+        if world.entities[index].destination != nil {
             var movingCustomer = world.entities[index]
-            let arrived = MovementSystem.advance(entity: &movingCustomer, world: world)
+            let arrived = MovementSystem.advance(
+                entity: &movingCustomer,
+                world: world,
+                deltaTime: deltaTime
+            )
             world.entities[index] = movingCustomer
 
             if arrived {
@@ -55,6 +54,8 @@ enum CustomerSystem {
 
             return
         }
+
+        world.entities[index].stateElapsedTime += deltaTime
 
         let customer = world.entities[index]
 
@@ -66,6 +67,12 @@ enum CustomerSystem {
 
         case .ordering where customer.stateElapsedTime >= Constants.orderingDuration:
             createOrderIfNeeded(world: &world, customerIndex: index)
+
+        case .entering where customer.destination == nil && customer.stateElapsedTime >= world.waitTimeout:
+            sendCustomerAwayHungry(world: &world, customerIndex: index)
+
+        case .waitingForSeat where customer.stateElapsedTime >= world.waitTimeout:
+            sendCustomerAwayHungry(world: &world, customerIndex: index)
 
         case .waitingForFood where customer.stateElapsedTime >= world.waitTimeout:
             sendCustomerAwayHungry(world: &world, customerIndex: index)
@@ -83,15 +90,24 @@ enum CustomerSystem {
 
     private static func handleArrival(world: inout BistroWorld, customerIndex: Int) {
         switch world.entities[customerIndex].customerState {
-        case .entering:
+        case .entering, .waitingForSeat:
+            let customer = world.entities[customerIndex]
+            guard let chairIndex = world.firstFurnitureIndex(
+                of: .chair,
+                where: { $0.position == customer.position }
+            ) else {
+                return
+            }
+
+            world.furniture[chairIndex].occupiedBy = customer.id
+
+            if let table = world.nearestTable(to: world.furniture[chairIndex]),
+               let tableIndex = world.firstFurnitureIndex(of: .table, where: { $0.id == table.id }) {
+                world.furniture[tableIndex].occupiedBy = customer.id
+            }
+
             world.entities[customerIndex].customerState = .seated
             world.entities[customerIndex].stateElapsedTime = 0
-
-            if let chairIndex = world.furniture.firstIndex(where: {
-                $0.kind == .chair && $0.position == world.entities[customerIndex].position
-            }) {
-                world.furniture[chairIndex].occupiedBy = world.entities[customerIndex].id
-            }
 
             world.postEvent(L10n.format(L10n.Event.customerSatDown, world.entities[customerIndex].name))
 
@@ -117,24 +133,23 @@ enum CustomerSystem {
     }
 
     private static func sendCustomerHome(world: inout BistroWorld, customerIndex: Int) {
-        guard let entrance = world.firstFurniture(of: .entrance) else {
+        guard let entrance = world.entranceFurniture() else {
             return
         }
 
         let customerID = world.entities[customerIndex].id
         world.entities[customerIndex].customerState = .leaving
         world.entities[customerIndex].destination = entrance.position
+        world.entities[customerIndex].path.removeAll()
         world.entities[customerIndex].stateElapsedTime = 0
 
-        if let chairIndex = world.firstFurnitureIndex(occupiedBy: customerID) {
-            world.furniture[chairIndex].occupiedBy = nil
-        }
+        releaseDiningResources(world: &world, customerID: customerID)
 
         world.postEvent(L10n.format(L10n.Event.guestLeavingHappy, world.entities[customerIndex].name))
     }
 
     private static func sendCustomerAwayHungry(world: inout BistroWorld, customerIndex: Int) {
-        guard let entrance = world.firstFurniture(of: .entrance) else {
+        guard let entrance = world.entranceFurniture() else {
             return
         }
 
@@ -143,18 +158,14 @@ enum CustomerSystem {
 
         world.entities[customerIndex].customerState = .leaving
         world.entities[customerIndex].destination = entrance.position
+        world.entities[customerIndex].path.removeAll()
         world.entities[customerIndex].stateElapsedTime = 0
         world.orders.removeAll { $0.customerID == customer.id }
         world.lostCustomers += 1
 
-        if let chairIndex = world.firstFurnitureIndex(occupiedBy: customer.id) {
-            world.furniture[chairIndex].occupiedBy = nil
-        }
+        releaseDiningResources(world: &world, customerID: customer.id)
 
-        if let staffIndex = world.firstEntityIndex(role: .staff),
-           staffStateReferencesAbandonedOrder(world.entities[staffIndex].staffState, abandonedOrderIDs: abandonedOrderIDs) {
-            world.entities[staffIndex].staffState = .idle
-        }
+        clearAbandonedStaffTasks(world: &world, abandonedOrderIDs: abandonedOrderIDs)
 
         world.postEvent(L10n.format(L10n.Event.guestLeftUnhappy, customer.name))
     }
@@ -164,8 +175,15 @@ enum CustomerSystem {
         let customerID = world.entities[customerIndex].id
         let completedMeal = world.orders.contains { $0.customerID == customerID && $0.status == .delivered }
 
+        if completedMeal {
+            for orderIndex in world.orders.indices where world.orders[orderIndex].customerID == customerID {
+                world.orders[orderIndex].status = .completed
+            }
+        }
+
         world.entities.remove(at: customerIndex)
-        world.orders.removeAll { $0.customerID == customerID || $0.status == .completed }
+        releaseDiningResources(world: &world, customerID: customerID)
+        world.orders.removeAll { $0.customerID == customerID }
 
         guard completedMeal else {
             return
@@ -178,6 +196,42 @@ enum CustomerSystem {
             world.postEvent(L10n.format(L10n.Event.goalReached, world.servedCustomers))
         } else {
             world.postEvent(L10n.format(L10n.Event.guestLeft, name, world.servedCustomers))
+        }
+    }
+
+    private static func releaseDiningResources(world: inout BistroWorld, customerID: Entity.ID) {
+        if let chairIndex = world.firstFurnitureIndex(of: .chair, where: { $0.occupiedBy == customerID }) {
+            world.furniture[chairIndex].occupiedBy = nil
+        }
+
+        if let tableIndex = world.firstFurnitureIndex(of: .table, where: { $0.occupiedBy == customerID }) {
+            world.furniture[tableIndex].occupiedBy = nil
+        }
+    }
+
+    private static func clearAbandonedStaffTasks(world: inout BistroWorld, abandonedOrderIDs: Set<Order.ID>) {
+        for index in world.entities.indices where world.entities[index].role.isStaff {
+            guard staffTaskReferencesAbandonedOrder(world.entities[index].taskKind, abandonedOrderIDs: abandonedOrderIDs) ||
+                  staffStateReferencesAbandonedOrder(world.entities[index].staffState, abandonedOrderIDs: abandonedOrderIDs)
+            else {
+                continue
+            }
+
+            world.entities[index].taskKind = nil
+            world.entities[index].taskRemaining = nil
+            world.entities[index].taskDuration = nil
+            world.entities[index].destination = nil
+            world.entities[index].path.removeAll()
+            world.entities[index].staffState = .idle
+        }
+    }
+
+    private static func staffTaskReferencesAbandonedOrder(_ taskKind: StaffTaskKind?, abandonedOrderIDs: Set<Order.ID>) -> Bool {
+        switch taskKind {
+        case .cooking(let orderID), .pickingUpDish(let orderID, _), .delivering(let orderID, _):
+            return abandonedOrderIDs.contains(orderID)
+        case nil:
+            return false
         }
     }
 
